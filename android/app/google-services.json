@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "858203024318",
+    "project_id": "eventku-s",
+    "storage_bucket": "eventku-s.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:858203024318:android:a6ab18335627bccd2327ef",
+        "android_client_info": {
+          "package_name": "com.example.eventku"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyACClzMUGq0jEXJ1Yj4RAqBMTTEW4LSrRw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:858203024318:android:b8bc685d41753b582327ef",
+        "android_client_info": {
+          "package_name": "com.example.eventku_final"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyACClzMUGq0jEXJ1Yj4RAqBMTTEW4LSrRw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
