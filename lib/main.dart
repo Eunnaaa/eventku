@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'firebase_options.dart';
 import 'screens/auth/auth_gate.dart';
@@ -14,47 +15,41 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  runApp(const MyApp());
+  bool initialIsDark = false;
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    initialIsDark = prefs.getBool('isDark') ?? false;
+  } catch (e) {
+    debugPrint('Error loading theme preference: $e');
+  }
+
+  runApp(MyApp(initialIsDark: initialIsDark));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool initialIsDark;
+
+  const MyApp({super.key, this.initialIsDark = false});
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<ThemeProvider>(
-      create: (_) => ThemeProvider(),
+      create: (_) => ThemeProvider(initialIsDark: initialIsDark),
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'EventKu',
 
-            // 🌞 Light & 🌙 Dark Theme
+            // Light & Dark Theme
             theme: AppTheme.light,
             darkTheme: AppTheme.dark,
             themeMode: themeProvider.isDark
                 ? ThemeMode.dark
                 : ThemeMode.light,
 
-            // 🚪 ENTRY POINT APLIKASI
+            // ENTRY POINT APLIKASI
             home: const AuthGate(),
-
-            // (opsional) Global fallback error UI
-            builder: (context, widget) {
-              ErrorWidget.builder = (FlutterErrorDetails details) {
-                debugPrint('FLUTTER ERROR: ${details.exceptionAsString()}');
-                return const Scaffold(
-                  body: Center(
-                    child: Text(
-                      'Terjadi kesalahan',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  ),
-                );
-              };
-              return widget!;
-            },
           );
         },
       ),

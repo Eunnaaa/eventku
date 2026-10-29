@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 class LoadingScreen extends StatelessWidget {
   const LoadingScreen({super.key});
@@ -6,26 +7,31 @@ class LoadingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F8),
+      backgroundColor: AppTheme.backgroundLight,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             /// LOGO
             Image.asset(
-              'assets/logo.png',
-              height: 100,
+              'assets/images/logo1.png',
+              height: 90,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.event_seat_rounded,
+                size: 70,
+                color: AppTheme.primary,
+              ),
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 28),
 
             /// LOADING INDICATOR
             const SizedBox(
-              width: 40,
-              height: 40,
+              width: 36,
+              height: 36,
               child: CircularProgressIndicator(
                 strokeWidth: 3,
-                color: Color(0xFFFF914D),
+                color: AppTheme.primary,
               ),
             ),
 
@@ -33,11 +39,11 @@ class LoadingScreen extends StatelessWidget {
 
             /// TEXT
             const Text(
-              'Loading...',
+              'Memuat EventKu...',
               style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF64748B),
               ),
             ),
           ],

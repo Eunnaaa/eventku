@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/admin_colors.dart';
 
 class ManageUserScreen extends StatelessWidget {
   const ManageUserScreen({super.key});
@@ -8,24 +9,22 @@ class ManageUserScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: AdminColors.background,
       appBar: AppBar(
         title: const Text('Manage Users'),
         centerTitle: true,
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        foregroundColor: AdminColors.textDark,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('users').snapshots(),
         builder: (context, snapshot) {
-
-          /// 🔴 ERROR HANDLING (PENTING)
           if (snapshot.hasError) {
             return Center(
               child: Text(
                 'Firestore Error:\n${snapshot.error}',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.red),
+                style: const TextStyle(color: AppTheme.danger),
               ),
             );
           }
@@ -34,38 +33,161 @@ class ManageUserScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final users = snapshot.data!.docs;
+          final users = snapshot.data?.docs ?? [];
 
           if (users.isEmpty) {
-            return const Center(child: Text('No users found'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.people_outline_rounded, size: 64, color: Colors.grey.shade400),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Tidak Ada Pengguna',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AdminColors.textDark,
+                    ),
+                  ),
+                ],
+              ),
+            );
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
             itemCount: users.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 14),
             itemBuilder: (context, index) {
               final userDoc = users[index];
-              final userData = userDoc.data() as Map<String, dynamic>;
+              final userData = userDoc.data() as Map<String, dynamic>? ?? {};
 
-              return _userCard(userDoc.id, userData);
+              return _UserCardItem(userId: userDoc.id, userData: userData);
             },
           );
         },
       ),
     );
   }
+}
 
-  /// ================= USER CARD =================
-  Widget _userCard(String userId, Map<String, dynamic> userData) {
+class _UserCardItem extends StatefulWidget {
+  final String userId;
+  final Map<String, dynamic> userData;
+
+  const _UserCardItem({required this.userId, required this.userData});
+
+  @override
+  State<_UserCardItem> createState() => _UserCardItemState();
+}
+
+class _UserCardItemState extends State<_UserCardItem> {
+  bool isExpanded = false;
+  List<Map<String, dynamic>>? userTickets;
+  bool isLoadingTickets = false;
+
+  Future<void> _fetchTickets() async {
+    if (userTickets != null) {
+      setState(() => isExpanded = !isExpanded);
+      return;
+    }
+
+    setState(() {
+      isLoadingTickets = true;
+      isExpanded = true;
+    });
+
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('tickets')
+          .where('userId', isEqualTo: widget.userId)
+          .get();
+
+      if (mounted) {
+        setState(() {
+          userTickets = snap.docs.map((d) => d.data()).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching tickets for user ${widget.userId}: $e');
+    } finally {
+      if (mounted) {
+        setState(() => isLoadingTickets = false);
+      }
+    }
+  }
+
+  Future<void> _toggleRole(String currentRole) async {
+    final nextRole = (currentRole == 'super_admin' || currentRole == 'admin') ? 'user' : 'super_admin';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Ubah Role Pengguna?'),
+        content: Text('Apakah Anda yakin ingin mengubah role akun ini menjadi "$nextRole"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Ubah Role', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await FirebaseFirestore.instance.collection('users').doc(widget.userId).update({
+          'role': nextRole,
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: AppTheme.success,
+              content: Text('Role berhasil diubah menjadi $nextRole'),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: AppTheme.danger,
+              content: Text('Gagal mengubah role: $e'),
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final role = widget.userData['role']?.toString() ?? 'user';
+    final name = widget.userData['fullName']?.toString() ?? 'User';
+    final email = widget.userData['email']?.toString() ?? '-';
+    final country = widget.userData['country']?.toString() ?? '-';
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : 'U';
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           )
@@ -74,13 +196,20 @@ class ManageUserScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           /// USER INFO
           Row(
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 22,
-                backgroundImage: NetworkImage('https://i.pravatar.cc/150'),
+                backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
+                child: Text(
+                  initial,
+                  style: const TextStyle(
+                    color: AppTheme.primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -88,123 +217,153 @@ class ManageUserScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      userData['fullName'] ?? '-',
+                      name,
                       style: const TextStyle(
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w800,
                         fontSize: 15,
+                        color: AdminColors.textDark,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      userData['email'] ?? '-',
-                      style: const TextStyle(color: Colors.grey),
+                      email,
+                      style: const TextStyle(color: AdminColors.textGrey, fontSize: 12),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Asal: $country',
+                      style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
                     ),
                   ],
                 ),
               ),
-              _roleBadge(userData['role'] ?? 'user'),
+              GestureDetector(
+                onTap: () => _toggleRole(role),
+                child: _roleBadge(role),
+              ),
             ],
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+          const Divider(height: 1),
 
-          /// USER TICKETS
-          StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('tickets')
-                .where('userId', isEqualTo: userId)
-                .snapshots(),
-            builder: (context, ticketSnapshot) {
-
-              if (ticketSnapshot.connectionState ==
-                  ConnectionState.waiting) {
-                return const LinearProgressIndicator();
-              }
-
-              final tickets = ticketSnapshot.data?.docs ?? [];
-
-              if (tickets.isEmpty) {
-                return const Text(
-                  'No booked events',
-                  style: TextStyle(color: Colors.grey),
-                );
-              }
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          /// TICKET ACCORDION
+          InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: _fetchTickets,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Booked Events (${tickets.length})',
+                    userTickets != null
+                        ? 'Tiket Dipesan (${userTickets!.length})'
+                        : 'Lihat Tiket Pengguna',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      color: AppTheme.primary,
+                      fontSize: 13,
                     ),
                   ),
-                  const SizedBox(height: 8),
-
-                  ...tickets.map((doc) {
-                    final data = doc.data() as Map<String, dynamic>;
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8F8F8),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            data['title'] ?? '-',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${data['date']} • ${data['time']}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          Text(
-                            data['location'] ?? '',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
+                  Icon(
+                    isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                    color: AppTheme.primary,
+                  ),
                 ],
-              );
-            },
+              ),
+            ),
           ),
+
+          if (isExpanded) ...[
+            const SizedBox(height: 4),
+            if (isLoadingTickets)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary),
+                  ),
+                ),
+              )
+            else if (userTickets == null || userTickets!.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'Belum ada tiket yang dipesan.',
+                  style: TextStyle(color: AdminColors.textGrey, fontSize: 12),
+                ),
+              )
+            else
+              ...userTickets!.map((data) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.confirmation_number_outlined, size: 16, color: AppTheme.primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              data['title']?.toString() ?? '-',
+                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${data['date'] ?? ''} • ${data['time'] ?? ''}',
+                              style: const TextStyle(fontSize: 11, color: AdminColors.textGrey),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+          ],
         ],
       ),
     );
   }
 
-  /// ================= ROLE BADGE =================
   Widget _roleBadge(String role) {
-    final isAdmin = role == 'admin';
+    final isAdmin = role == 'super_admin' || role == 'admin';
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: isAdmin ? Colors.blue.withOpacity(0.15) : Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(12),
+        color: isAdmin ? AppTheme.accentBlue.withValues(alpha: 0.12) : Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(10),
       ),
-      child: Text(
-        role.toUpperCase(),
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          color: isAdmin ? Colors.blue : Colors.black54,
-          fontSize: 12,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isAdmin ? Icons.shield_rounded : Icons.person_rounded,
+            size: 13,
+            color: isAdmin ? AppTheme.accentBlue : Colors.grey.shade700,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            isAdmin ? 'SUPER ADMIN' : 'USER',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: isAdmin ? AppTheme.accentBlue : Colors.grey.shade700,
+              fontSize: 10,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/event_model.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/admin_colors.dart';
 import 'admin_event_service.dart';
 
 class EventFormScreen extends StatefulWidget {
@@ -19,80 +21,371 @@ class _EventFormScreenState extends State<EventFormScreen> {
   final location = TextEditingController();
   final description = TextEditingController();
   final image = TextEditingController();
+  final quota = TextEditingController();
+  final speakerName = TextEditingController();
+  final speakerRole = TextEditingController();
+
+  bool isOnline = false;
+  bool isSaving = false;
+  DateTime? selectedDateTime;
 
   @override
   void initState() {
     super.initState();
     if (widget.event != null) {
-      title.text = widget.event!.title;
-      category.text = widget.event!.category;
-      date.text = widget.event!.date;
-      time.text = widget.event!.time;
-      location.text = widget.event!.location;
-      description.text = widget.event!.description;
-      image.text = widget.event!.image;
+      final ev = widget.event!;
+      title.text = ev.title;
+      category.text = ev.category;
+      date.text = ev.date;
+      selectedDateTime = ev.eventDate.toDate();
+      time.text = ev.time;
+      location.text = ev.location;
+      description.text = ev.description;
+      image.text = ev.image;
+      quota.text = ev.quota.toString();
+      speakerName.text = ev.speakerName;
+      speakerRole.text = ev.speakerRole;
+      isOnline = ev.isOnline;
+    } else {
+      quota.text = '100';
+      category.text = 'Technology';
+    }
+  }
+
+  @override
+  void dispose() {
+    title.dispose();
+    category.dispose();
+    date.dispose();
+    time.dispose();
+    location.dispose();
+    description.dispose();
+    image.dispose();
+    quota.dispose();
+    speakerName.dispose();
+    speakerRole.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDateTime ?? now,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 5),
+    );
+    if (picked != null) {
+      setState(() {
+        selectedDateTime = picked;
+        date.text = EventModel.formatDate(picked);
+      });
+    }
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (picked != null) {
+      final hour = picked.hour.toString().padLeft(2, '0');
+      final minute = picked.minute.toString().padLeft(2, '0');
+      setState(() {
+        time.text = '$hour:$minute';
+      });
     }
   }
 
   Future<void> submit() async {
-    final event = EventModel(
-      id: widget.event?.id ?? '',
-      title: title.text.trim(),
-      category: category.text.trim(),
-      date: date.text.trim(),
-      time: time.text.trim(),
-      location: location.text.trim(),
-      description: description.text.trim(),
-      image: image.text.trim(),
-      createdAt: widget.event?.createdAt ?? Timestamp.now(),
-      isPublished: widget.event?.isPublished ?? true,
-    );
+    final titleText = title.text.trim();
+    final categoryText = category.text.trim();
+    final dateText = date.text.trim();
+    final timeText = time.text.trim();
+    final locationText = location.text.trim();
+    final descText = description.text.trim();
+    final imgText = image.text.trim();
+    final parsedQuota = int.tryParse(quota.text.trim()) ?? 100;
 
-    if (widget.event == null) {
-      await AdminEventService.createEvent(event);
-    } else {
-      await AdminEventService.updateEvent(event);
+    if (titleText.isEmpty || dateText.isEmpty || locationText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text('Judul, Tanggal, dan Lokasi wajib diisi'),
+        ),
+      );
+      return;
     }
 
-    if (mounted) Navigator.pop(context);
+    try {
+      setState(() => isSaving = true);
+
+      final eventDateTimestamp = selectedDateTime != null
+          ? Timestamp.fromDate(selectedDateTime!)
+          : EventModel.parseDate(null, dateText);
+
+      final event = EventModel(
+        id: widget.event?.id ?? '',
+        title: titleText,
+        category: categoryText.isNotEmpty ? categoryText : 'General',
+        date: dateText,
+        eventDate: eventDateTimestamp,
+        time: timeText,
+        location: locationText,
+        description: descText,
+        image: imgText,
+        createdAt: widget.event?.createdAt ?? Timestamp.now(),
+        isPublished: widget.event?.isPublished ?? true,
+        quota: parsedQuota,
+        bookedCount: widget.event?.bookedCount ?? 0,
+        speakerName: speakerName.text.trim(),
+        speakerRole: speakerRole.text.trim(),
+        isOnline: isOnline,
+        benefits: widget.event?.benefits ?? const [
+          'E-Sertifikat Resmi Bernilai SKP',
+          'Materi & Rekaman Presentasi',
+          'Snack Box & Konsumsi',
+          'Networking Session',
+        ],
+      );
+
+      if (widget.event == null) {
+        await AdminEventService.createEvent(event);
+      } else {
+        await AdminEventService.updateEvent(event);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppTheme.success,
+            content: Text(widget.event == null ? 'Event berhasil dibuat' : 'Event berhasil diperbarui'),
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppTheme.danger,
+            content: Text('Gagal menyimpan event: $e'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isSaving = false);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar:
-      AppBar(title: Text(widget.event == null ? 'Create Event' : 'Edit Event')),
-      body: Padding(
+      backgroundColor: AdminColors.background,
+      appBar: AppBar(
+        title: Text(widget.event == null ? 'Buat Event Baru' : 'Edit Event'),
+        foregroundColor: AdminColors.textDark,
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
-        child: ListView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _input(title, 'Title'),
-            _input(category, 'Category'),
-            _input(date, 'Date'),
-            _input(time, 'Time'),
-            _input(location, 'Location'),
-            _input(description, 'Description'),
-            _input(image, 'Image URL (imgbb)'),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: submit,
-              child: const Text('Save Event'),
+            /// SECTION: INFORMASI UTAMA
+            _sectionCard(
+              title: 'Informasi Acara',
+              children: [
+                _input(title, 'Judul Acara *', hint: 'Contoh: Tech Summit 2026'),
+                _input(category, 'Kategori', hint: 'Health, Business, Travel, Technology'),
+                _input(description, 'Deskripsi Acara', maxLines: 3, hint: 'Jelaskan topik materi dan keunggulan acara...'),
+                _input(image, 'Tautan Poster Gambar (URL)', hint: 'https://images.unsplash.com/...'),
+              ],
             ),
+
+            const SizedBox(height: 18),
+
+            /// SECTION: JADWAL & LOKASI
+            _sectionCard(
+              title: 'Jadwal & Lokasi',
+              children: [
+                _input(
+                  date,
+                  'Tanggal Pelaksanaan *',
+                  hint: 'Pilih tanggal acara',
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.calendar_month_rounded, color: AppTheme.primary),
+                    onPressed: _pickDate,
+                  ),
+                ),
+                _input(
+                  time,
+                  'Waktu Mulai',
+                  hint: 'Contoh: 09:00',
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.access_time_filled_rounded, color: AppTheme.primary),
+                    onPressed: _pickTime,
+                  ),
+                ),
+                _input(location, 'Lokasi / Tautan Platform *', hint: 'Gedung Serbaguna atau Zoom Link'),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Format Acara Online (Webinar)',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    Switch(
+                      value: isOnline,
+                      activeThumbColor: AppTheme.primary,
+                      onChanged: (v) => setState(() => isOnline = v),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 18),
+
+            /// SECTION: NARASUMBER & KUOTA
+            _sectionCard(
+              title: 'Narasumber & Kuota Peserta',
+              children: [
+                _input(speakerName, 'Nama Pembicara Utama', hint: 'Contoh: Dr. Jane Doe'),
+                _input(speakerRole, 'Peran / Jabatan Pembicara', hint: 'Contoh: Lead AI Scientist'),
+                _input(quota, 'Kuota Maksimal Kursi', keyboardType: TextInputType.number, hint: '100'),
+              ],
+            ),
+
+            const SizedBox(height: 28),
+
+            /// SUBMIT BUTTON
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                onPressed: isSaving ? null : submit,
+                child: isSaving
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
+                      )
+                    : Text(
+                        widget.event == null ? 'Terbitkan Event' : 'Perbarui Event',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+              ),
+            ),
+
+            const SizedBox(height: 32),
           ],
         ),
       ),
     );
   }
 
-  Widget _input(TextEditingController c, String label) {
+  Widget _sectionCard({required String title, required List<Widget> children}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AdminColors.textDark,
+            ),
+          ),
+          const SizedBox(height: 14),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _input(
+    TextEditingController c,
+    String label, {
+    String? hint,
+    int maxLines = 1,
+    Widget? suffixIcon,
+    TextInputType? keyboardType,
+  }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: c,
-        decoration: InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-        ),
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF475569),
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextField(
+            controller: c,
+            maxLines: maxLines,
+            keyboardType: keyboardType,
+            style: const TextStyle(fontSize: 14),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+              suffixIcon: suffixIcon,
+              filled: true,
+              fillColor: const Color(0xFFF8FAFC),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.06)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.06)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
