@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/event_model.dart';
 import '../theme/app_theme.dart';
-import 'ticket_service.dart';
+import '../services/ticket_service.dart';
 
 class EventDetailScreen extends StatefulWidget {
   final EventModel event;
@@ -171,7 +171,7 @@ Temukan dan pesan tiket gratis Anda sekarang di aplikasi EventKu!
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF1F5F9),
+                color: isDark ? AppTheme.surfaceDark : AppTheme.surfaceLight,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -263,6 +263,11 @@ Temukan dan pesan tiket gratis Anda sekarang di aplikasi EventKu!
 
         final remainingSeats = event.quota > 0 ? (event.quota - event.bookedCount) : 100;
         final isSoldOut = event.quota > 0 && remainingSeats <= 0;
+        final eventDateTime = event.eventDate.toDate();
+        final now = DateTime.now();
+        final isPassed = now.isAfter(DateTime(eventDateTime.year, eventDateTime.month, eventDateTime.day, 23, 59, 59));
+        final isUnpublished = !event.isPublished;
+        final canBook = !isSoldOut && !isPassed && !isUnpublished;
 
         return Scaffold(
           backgroundColor: isDark ? AppTheme.backgroundDark : AppTheme.backgroundLight,
@@ -339,7 +344,7 @@ Temukan dan pesan tiket gratis Anda sekarang di aplikasi EventKu!
                         fit: BoxFit.cover,
                         loadingBuilder: (context, child, loadingProgress) {
                           if (loadingProgress == null) return child;
-                          return Container(
+                          return ColoredBox(
                             color: isDark ? const Color(0xFF1F2634) : const Color(0xFFE2E8F0),
                             child: Center(
                               child: CircularProgressIndicator(
@@ -353,9 +358,9 @@ Temukan dan pesan tiket gratis Anda sekarang di aplikasi EventKu!
                             ),
                           );
                         },
-                        errorBuilder: (_, __, ___) => Container(
-                          color: const Color(0xFF2E384D),
-                          child: const Icon(Icons.image_not_supported_rounded, size: 60, color: Colors.white38),
+                        errorBuilder: (_, __, ___) => const ColoredBox(
+                          color: Color(0xFF2E384D),
+                          child: Icon(Icons.image_not_supported_rounded, size: 60, color: Colors.white38),
                         ),
                       ),
                       Container(
@@ -478,7 +483,13 @@ Temukan dan pesan tiket gratis Anda sekarang di aplikasi EventKu!
                                 const Icon(Icons.people_alt_outlined, color: AppTheme.primary, size: 20),
                                 const SizedBox(width: 8),
                                 Text(
-                                  isSoldOut ? 'Tiket Habis (Sold Out)' : 'Sisa Kursi Peserta',
+                                  isPassed
+                                      ? 'Status Pelaksanaan Acara'
+                                      : isUnpublished
+                                          ? 'Status Pendaftaran'
+                                          : isSoldOut
+                                              ? 'Tiket Habis (Sold Out)'
+                                              : 'Sisa Kursi Peserta',
                                   style: TextStyle(
                                     fontWeight: FontWeight.w700,
                                     fontSize: 14,
@@ -490,15 +501,25 @@ Temukan dan pesan tiket gratis Anda sekarang di aplikasi EventKu!
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                               decoration: BoxDecoration(
-                                color: isSoldOut ? AppTheme.danger.withValues(alpha: 0.15) : AppTheme.success.withValues(alpha: 0.15),
+                                color: (isPassed || isUnpublished || isSoldOut)
+                                    ? AppTheme.danger.withValues(alpha: 0.15)
+                                    : AppTheme.success.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text(
-                                isSoldOut ? 'SOLD OUT' : '$remainingSeats Kursi Tersedia',
+                                isPassed
+                                    ? 'SELESAI'
+                                    : isUnpublished
+                                        ? 'DITUTUP'
+                                        : isSoldOut
+                                            ? 'SOLD OUT'
+                                            : '$remainingSeats Kursi Tersedia',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w800,
                                   fontSize: 11,
-                                  color: isSoldOut ? AppTheme.danger : AppTheme.success,
+                                  color: (isPassed || isUnpublished || isSoldOut)
+                                      ? AppTheme.danger
+                                      : AppTheme.success,
                                 ),
                               ),
                             ),
@@ -665,7 +686,7 @@ Temukan dan pesan tiket gratis Anda sekarang di aplikasi EventKu!
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
-                                        color: isDark ? Colors.white70 : const Color(0xFF334155),
+                                        color: isDark ? Colors.white70 : AppTheme.textDark,
                                       ),
                                     ),
                                   ),
@@ -695,7 +716,7 @@ Temukan dan pesan tiket gratis Anda sekarang di aplikasi EventKu!
                           color: isDark ? AppTheme.cardDark : Colors.white,
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(
-                            color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                            color: AppTheme.border(isDark),
                           ),
                         ),
                         child: Column(
@@ -728,7 +749,7 @@ Temukan dan pesan tiket gratis Anda sekarang di aplikasi EventKu!
                           color: isDark ? AppTheme.cardDark : Colors.white,
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(
-                            color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                            color: AppTheme.border(isDark),
                           ),
                         ),
                         child: Text(
@@ -738,7 +759,7 @@ Temukan dan pesan tiket gratis Anda sekarang di aplikasi EventKu!
                           style: TextStyle(
                             height: 1.6,
                             fontSize: 14,
-                            color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+                            color: isDark ? const Color(0xFFCBD5E1) : AppTheme.textMutedLight,
                           ),
                         ),
                       ),
@@ -804,13 +825,13 @@ Temukan dan pesan tiket gratis Anda sekarang di aplikasi EventKu!
                       height: 52,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: isSoldOut ? Colors.grey : AppTheme.primary,
+                          backgroundColor: !canBook ? Colors.grey.shade600 : AppTheme.primary,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        onPressed: (isBooking || isSoldOut) ? null : () => _handleBookTicket(event),
+                        onPressed: (isBooking || !canBook) ? null : () => _handleBookTicket(event),
                         child: isBooking
                             ? const SizedBox(
                                 width: 22,
@@ -824,13 +845,25 @@ Temukan dan pesan tiket gratis Anda sekarang di aplikasi EventKu!
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(
-                                    isSoldOut ? Icons.block_rounded : Icons.confirmation_number_outlined,
+                                    isPassed
+                                        ? Icons.event_busy_rounded
+                                        : isUnpublished
+                                            ? Icons.lock_clock_rounded
+                                            : isSoldOut
+                                                ? Icons.block_rounded
+                                                : Icons.confirmation_number_outlined,
                                     color: Colors.white,
                                     size: 18,
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    isSoldOut ? 'Kuota Penuh' : 'Dapatkan Tiket',
+                                    isPassed
+                                        ? 'Acara Selesai'
+                                        : isUnpublished
+                                            ? 'Pendaftaran Ditutup'
+                                            : isSoldOut
+                                                ? 'Kuota Penuh'
+                                                : 'Dapatkan Tiket',
                                     style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.bold,

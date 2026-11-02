@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/event_model.dart';
-import '../screens/admin/admin_event_service.dart';
+import 'admin_event_service.dart';
 
 class EventSeedService {
   /// Daftar event sampel berkualitas tinggi untuk masing-masing kategori

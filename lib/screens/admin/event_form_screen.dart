@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/event_model.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/admin_colors.dart';
-import 'admin_event_service.dart';
+import '../../services/admin_event_service.dart';
 
 class EventFormScreen extends StatefulWidget {
   final EventModel? event;
@@ -117,6 +117,16 @@ class _EventFormScreenState extends State<EventFormScreen> {
       return;
     }
 
+    if (parsedQuota < 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text('Kuota peserta minimal harus 1 tiket'),
+        ),
+      );
+      return;
+    }
+
     try {
       setState(() => isSaving = true);
 
@@ -184,11 +194,14 @@ class _EventFormScreenState extends State<EventFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AdminColors.background,
+      backgroundColor: isDark ? AppTheme.backgroundDark : AppTheme.backgroundLight,
       appBar: AppBar(
         title: Text(widget.event == null ? 'Buat Event Baru' : 'Edit Event'),
-        foregroundColor: AdminColors.textDark,
+        foregroundColor: isDark ? Colors.white : AdminColors.textDark,
+        backgroundColor: Colors.transparent,
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -304,16 +317,18 @@ class _EventFormScreenState extends State<EventFormScreen> {
   }
 
   Widget _sectionCard({required String title, required List<Widget> children}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppTheme.cardDark : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+        border: Border.all(color: AppTheme.border(isDark)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -324,10 +339,10 @@ class _EventFormScreenState extends State<EventFormScreen> {
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
-              color: AdminColors.textDark,
+              color: isDark ? Colors.white : AdminColors.textDark,
             ),
           ),
           const SizedBox(height: 14),
@@ -345,6 +360,8 @@ class _EventFormScreenState extends State<EventFormScreen> {
     Widget? suffixIcon,
     TextInputType? keyboardType,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(
@@ -352,10 +369,10 @@ class _EventFormScreenState extends State<EventFormScreen> {
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF475569),
+              color: isDark ? AppTheme.textMutedDark : const Color(0xFF475569),
             ),
           ),
           const SizedBox(height: 6),
@@ -363,25 +380,25 @@ class _EventFormScreenState extends State<EventFormScreen> {
             controller: c,
             maxLines: maxLines,
             keyboardType: keyboardType,
-            style: const TextStyle(fontSize: 14),
+            style: TextStyle(fontSize: 14, color: isDark ? Colors.white : AppTheme.textDark),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+              hintStyle: TextStyle(color: isDark ? AppTheme.textMutedDark : Colors.grey.shade400, fontSize: 13),
               suffixIcon: suffixIcon,
               filled: true,
-              fillColor: const Color(0xFFF8FAFC),
+              fillColor: isDark ? AppTheme.surfaceDark : const Color(0xFFF8FAFC),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.06)),
+                borderSide: BorderSide(color: AppTheme.border(isDark)),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.06)),
+                borderSide: BorderSide(color: AppTheme.border(isDark)),
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
+              focusedBorder: const OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(14)),
+                borderSide: BorderSide(color: AppTheme.primary, width: 1.5),
               ),
             ),
           ),

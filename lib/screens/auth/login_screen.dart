@@ -47,7 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (mounted) {
-        Navigator.of(context).pop();
+        Navigator.of(context).popUntil((route) => route.isFirst);
       }
     } on FirebaseAuthException catch (e) {
       String message = 'Login gagal';
@@ -367,7 +367,7 @@ class _LoginScreenState extends State<LoginScreen> {
       style: TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w700,
-        color: isDark ? Colors.white70 : const Color(0xFF334155),
+        color: isDark ? Colors.white70 : AppTheme.textDark,
       ),
     );
   }
@@ -381,7 +381,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(
-        color: isDark ? Colors.white30 : Colors.grey.shade400,
+        color: AppTheme.textMuted(isDark),
         fontSize: 14,
       ),
       prefixIcon: Icon(icon, color: AppTheme.primary, size: 20),
@@ -392,7 +392,7 @@ class _LoginScreenState extends State<LoginScreen> {
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(
-          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+          color: isDark ? AppTheme.borderDark : AppTheme.borderLight,
         ),
       ),
       focusedBorder: OutlineInputBorder(

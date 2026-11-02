@@ -94,13 +94,15 @@ class _EventAttendeesScreenState extends State<EventAttendeesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AdminColors.background,
+      backgroundColor: isDark ? AppTheme.backgroundDark : AppTheme.backgroundLight,
       appBar: AppBar(
         title: const Text('Daftar Peserta Acara'),
         centerTitle: true,
         backgroundColor: Colors.transparent,
-        foregroundColor: AdminColors.textDark,
+        foregroundColor: isDark ? Colors.white : AdminColors.textDark,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -135,12 +137,12 @@ class _EventAttendeesScreenState extends State<EventAttendeesScreen> {
                 margin: const EdgeInsets.fromLTRB(20, 8, 20, 16),
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDark ? AppTheme.cardDark : Colors.white,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+                  border: Border.all(color: AppTheme.border(isDark)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.03),
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -153,21 +155,28 @@ class _EventAttendeesScreenState extends State<EventAttendeesScreen> {
                       widget.event.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                        color: isDark ? Colors.white : AdminColors.textDark,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '${widget.event.date} • Kuota: ${widget.event.bookedCount}/${widget.event.quota}',
-                      style: const TextStyle(fontSize: 12, color: AdminColors.textGrey),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? AppTheme.textMutedDark : AdminColors.textGrey,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _metricItem('Terdaftar', allTickets.length.toString(), AppTheme.primary),
-                        _metricItem('Hadir (Check-in)', completedCount.toString(), AppTheme.success),
-                        _metricItem('Upcoming', upcomingCount.toString(), AppTheme.accentBlue),
-                        _metricItem('Batal', cancelledCount.toString(), AppTheme.danger),
+                        _metricItem('Terdaftar', allTickets.length.toString(), AppTheme.primary, isDark),
+                        _metricItem('Hadir (Check-in)', completedCount.toString(), AppTheme.success, isDark),
+                        _metricItem('Upcoming', upcomingCount.toString(), AppTheme.accentBlue, isDark),
+                        _metricItem('Batal', cancelledCount.toString(), AppTheme.danger, isDark),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -195,8 +204,10 @@ class _EventAttendeesScreenState extends State<EventAttendeesScreen> {
                 child: TextField(
                   controller: _searchController,
                   onChanged: (v) => setState(() => search = v.trim().toLowerCase()),
+                  style: TextStyle(color: isDark ? Colors.white : AppTheme.textDark),
                   decoration: InputDecoration(
                     hintText: 'Cari nama peserta atau Pass ID...',
+                    hintStyle: TextStyle(color: isDark ? AppTheme.textMutedDark : Colors.grey.shade400, fontSize: 13),
                     prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.primary, size: 20),
                     suffixIcon: search.isNotEmpty
                         ? IconButton(
@@ -208,11 +219,11 @@ class _EventAttendeesScreenState extends State<EventAttendeesScreen> {
                           )
                         : null,
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: isDark ? AppTheme.surfaceDark : Colors.white,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.06)),
+                      borderSide: BorderSide(color: AppTheme.border(isDark)),
                     ),
                   ),
                 ),
@@ -263,9 +274,9 @@ class _EventAttendeesScreenState extends State<EventAttendeesScreen> {
                           return Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: isDark ? AppTheme.cardDark : Colors.white,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+                              border: Border.all(color: AppTheme.border(isDark)),
                             ),
                             child: Row(
                               children: [
@@ -284,12 +295,20 @@ class _EventAttendeesScreenState extends State<EventAttendeesScreen> {
                                     children: [
                                       Text(
                                         name,
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                          color: isDark ? Colors.white : AppTheme.textDark,
+                                        ),
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
                                         'PASS ID: $passId',
-                                        style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: AdminColors.textGrey),
+                                        style: TextStyle(
+                                          fontFamily: 'monospace',
+                                          fontSize: 11,
+                                          color: isDark ? AppTheme.textMutedDark : AdminColors.textGrey,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -322,7 +341,7 @@ class _EventAttendeesScreenState extends State<EventAttendeesScreen> {
     );
   }
 
-  Widget _metricItem(String label, String value, Color color) {
+  Widget _metricItem(String label, String value, Color color, bool isDark) {
     return Column(
       children: [
         Text(
@@ -332,7 +351,7 @@ class _EventAttendeesScreenState extends State<EventAttendeesScreen> {
         const SizedBox(height: 2),
         Text(
           label,
-          style: const TextStyle(fontSize: 10, color: AdminColors.textGrey, fontWeight: FontWeight.w600),
+          style: TextStyle(fontSize: 10, color: isDark ? AppTheme.textMutedDark : AdminColors.textGrey, fontWeight: FontWeight.w600),
         ),
       ],
     );

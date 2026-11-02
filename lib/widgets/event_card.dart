@@ -24,8 +24,9 @@ class EventCard extends StatelessWidget {
     final remainingSeats = event.quota > 0 ? (event.quota - event.bookedCount) : 100;
     final isSoldOut = event.quota > 0 && remainingSeats <= 0;
 
-    return GestureDetector(
-      onTap: () {
+    return RepaintBoundary(
+      child: GestureDetector(
+        onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -57,23 +58,19 @@ class EventCard extends StatelessWidget {
                 fit: BoxFit.cover,
                 loadingBuilder: (context, child, loadingProgress) {
                   if (loadingProgress == null) return child;
-                  return Container(
-                    color: const Color(0xFF1F2634),
+                  return const ColoredBox(
+                    color: Color(0xFF1F2634),
                     child: Center(
                       child: CircularProgressIndicator(
-                        value: loadingProgress.expectedTotalBytes != null
-                            ? loadingProgress.cumulativeBytesLoaded /
-                                loadingProgress.expectedTotalBytes!
-                            : null,
                         strokeWidth: 2,
                         color: AppTheme.primaryLight,
                       ),
                     ),
                   );
                 },
-                errorBuilder: (_, __, ___) => Container(
-                  color: const Color(0xFF1E2430),
-                  child: const Center(
+                errorBuilder: (_, __, ___) => const ColoredBox(
+                  color: Color(0xFF1E2430),
+                  child: Center(
                     child: Icon(Icons.event_outlined, size: 54, color: Colors.white38),
                   ),
                 ),
@@ -287,6 +284,7 @@ class EventCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

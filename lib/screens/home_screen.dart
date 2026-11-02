@@ -83,7 +83,7 @@ class _HomePageState extends State<HomePage> {
               backgroundColor: Colors.transparent,
               elevation: 0,
               selectedItemColor: AppTheme.primary,
-              unselectedItemColor: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+              unselectedItemColor: AppTheme.textMuted(isDark),
               selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
               unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
               type: BottomNavigationBarType.fixed,
@@ -186,7 +186,7 @@ class _HomePageState extends State<HomePage> {
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
-                                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                    color: AppTheme.textMuted(isDark),
                                   ),
                                 ),
                                 if (country.isNotEmpty) ...[
@@ -195,7 +195,7 @@ class _HomePageState extends State<HomePage> {
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w500,
-                                      color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                                      color: isDark ? Colors.white54 : AppTheme.textMutedLight,
                                     ),
                                   ),
                                 ],
@@ -448,7 +448,7 @@ class _HomePageState extends State<HomePage> {
                         border: Border.all(
                           color: active
                               ? Colors.transparent
-                              : (isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06)),
+                              : AppTheme.border(isDark),
                         ),
                         boxShadow: active
                             ? [
@@ -467,7 +467,7 @@ class _HomePageState extends State<HomePage> {
                             size: 16,
                             color: active
                                 ? Colors.white
-                                : (isDark ? Colors.white70 : const Color(0xFF475569)),
+                                : (isDark ? Colors.white70 : AppTheme.textMutedLight),
                           ),
                           const SizedBox(width: 7),
                           Text(
@@ -477,7 +477,7 @@ class _HomePageState extends State<HomePage> {
                               fontSize: 13,
                               color: active
                                   ? Colors.white
-                                  : (isDark ? Colors.white70 : const Color(0xFF475569)),
+                                  : (isDark ? Colors.white70 : AppTheme.textMutedLight),
                             ),
                           ),
                         ],
@@ -525,155 +525,151 @@ class _HomePageState extends State<HomePage> {
 
             const SizedBox(height: 16),
 
-            /// ================= EVENT CARD AREA =================
-            SizedBox(
-              height: 280,
-              child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('events')
-                    .where('isPublished', isEqualTo: true)
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        'Gagal memuat event',
-                        style: TextStyle(color: Colors.red.shade400),
-                      ),
-                    );
-                  }
+            /// ================= CONSOLIDATED REAL-TIME EVENT STREAMS =================
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('events')
+                  .where('isPublished', isEqualTo: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Container(
+                    padding: const EdgeInsets.all(24),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'Gagal memuat event',
+                      style: TextStyle(color: Colors.red.shade400),
+                    ),
+                  );
+                }
 
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox(
+                    height: 280,
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
 
-                  var events = snapshot.data!.docs
-                      .map((e) => EventModel.fromFirestore(e))
+                final allEvents = (snapshot.data?.docs ?? [])
+                    .map((e) => EventModel.fromFirestore(e))
+                    .toList();
+
+                // 1. Upcoming Events list
+                var upcomingEvents = List<EventModel>.from(allEvents);
+                upcomingEvents.sort((a, b) => a.eventDate.compareTo(b.eventDate));
+
+                if (selectedCategory != 'All') {
+                  upcomingEvents = upcomingEvents
+                      .where((e) =>
+                          e.category.toLowerCase() ==
+                          selectedCategory.toLowerCase())
                       .toList();
+                }
 
-                  // Sort by upcoming event date
-                  events.sort((a, b) => a.eventDate.compareTo(b.eventDate));
+                // 2. Popular Events list
+                final popularEvents = List<EventModel>.from(allEvents);
+                popularEvents.sort((a, b) => b.bookedCount.compareTo(a.bookedCount));
 
-                  // Filter by category
-                  if (selectedCategory != 'All') {
-                    events = events
-                        .where((e) =>
-                            e.category.toLowerCase() ==
-                            selectedCategory.toLowerCase())
-                        .toList();
-                  }
-
-                  if (events.isEmpty) {
-                    return Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: isDark ? AppTheme.cardDark : Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.event_busy_rounded, size: 44, color: Colors.grey.shade400),
-                          const SizedBox(height: 12),
-                          Text(
-                            selectedCategory == 'All'
-                                ? 'Belum ada event mendatang'
-                                : 'Tidak ada event di kategori $selectedCategory',
-                            style: TextStyle(
-                              color: isDark ? Colors.white60 : Colors.grey.shade600,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    /// UPCOMING EVENTS CAROUSEL
+                    SizedBox(
+                      height: 280,
+                      child: upcomingEvents.isEmpty
+                          ? Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: isDark ? AppTheme.cardDark : Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                                ),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.event_busy_rounded, size: 44, color: Colors.grey.shade400),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    selectedCategory == 'All'
+                                        ? 'Belum ada event mendatang'
+                                        : 'Tidak ada event di kategori $selectedCategory',
+                                    style: TextStyle(
+                                      color: isDark ? Colors.white60 : Colors.grey.shade600,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: upcomingEvents.length,
+                              itemBuilder: (context, i) {
+                                return EventCard(event: upcomingEvents[i], width: 275);
+                              },
                             ),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    /// POPULAR EVENTS HEADER
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Popular Events',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: isDark ? Colors.white : AppTheme.textDark,
+                            letterSpacing: -0.3,
                           ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  events.sort((a, b) => a.eventDate.compareTo(b.eventDate));
-
-                  return ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: events.length,
-                    itemBuilder: (context, i) {
-                      return EventCard(event: events[i], width: 275);
-                    },
-                  );
-                },
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            /// ================= POPULAR EVENTS =================
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Popular Events',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : AppTheme.textDark,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => setState(() => _currentIndex = 2),
-                  child: const Row(
-                    children: [
-                      Text(
-                        'See All',
-                        style: TextStyle(
-                          color: AppTheme.primary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
                         ),
-                      ),
-                      SizedBox(width: 2),
-                      Icon(Icons.chevron_right_rounded, size: 18, color: AppTheme.primary),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+                        GestureDetector(
+                          onTap: () => setState(() => _currentIndex = 2),
+                          child: const Row(
+                            children: [
+                              Text(
+                                'See All',
+                                style: TextStyle(
+                                  color: AppTheme.primary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              SizedBox(width: 2),
+                              Icon(Icons.chevron_right_rounded, size: 18, color: AppTheme.primary),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
 
-            const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-            SizedBox(
-              height: 280,
-              child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('events')
-                    .where('isPublished', isEqualTo: true)
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return const SizedBox();
-                  }
-
-                  final popularEvents = snapshot.data!.docs
-                      .map((e) => EventModel.fromFirestore(e))
-                      .toList();
-
-                  popularEvents.sort((a, b) => b.bookedCount.compareTo(a.bookedCount));
-
-                  return ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: popularEvents.length,
-                    itemBuilder: (context, i) {
-                      return EventCard(
-                        event: popularEvents[i],
-                        width: 260,
-                      );
-                    },
-                  );
-                },
-              ),
+                    /// POPULAR EVENTS CAROUSEL
+                    SizedBox(
+                      height: 280,
+                      child: popularEvents.isEmpty
+                          ? const SizedBox()
+                          : ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: popularEvents.length,
+                              itemBuilder: (context, i) {
+                                return EventCard(
+                                  event: popularEvents[i],
+                                  width: 260,
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         ),

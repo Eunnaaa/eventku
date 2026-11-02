@@ -233,11 +233,11 @@ class ProfileScreen extends StatelessWidget {
                                   Text('Bantuan EventKu'),
                                 ],
                               ),
-                              content: SingleChildScrollView(
+                              content: const SingleChildScrollView(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisSize: MainAxisSize.min,
-                                  children: const [
+                                  children: [
                                     Text(
                                       'Bagaimana cara masuk ke venue event?',
                                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
@@ -364,6 +364,9 @@ class ProfileScreen extends StatelessWidget {
 
                       if (confirm == true) {
                         await FirebaseAuth.instance.signOut();
+                        if (context.mounted) {
+                          Navigator.of(context).popUntil((route) => route.isFirst);
+                        }
                       }
                     },
                   ),

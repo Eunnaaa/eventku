@@ -13,6 +13,8 @@ class CheckInScreen extends StatefulWidget {
 class _CheckInScreenState extends State<CheckInScreen> {
   final _codeController = TextEditingController();
   bool isProcessing = false;
+  String? selectedEventId;
+  String? selectedEventTitle;
 
   @override
   void dispose() {
@@ -35,7 +37,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
     setState(() => isProcessing = true);
 
     try {
-      // 1. Cari tiket berdasarkan Document ID langsung atau prefix kode
+      // 1. Cari tiket berdasarkan Document ID langsung, ticketCode, atau range prefix
       DocumentSnapshot? ticketDoc;
 
       // Cek apakah code adalah Document ID lengkap
@@ -43,16 +45,27 @@ class _CheckInScreenState extends State<CheckInScreen> {
       if (directDoc.exists) {
         ticketDoc = directDoc;
       } else {
-        // Jika kode 8 karakter pertama, query dari Firestore
-        final query = await FirebaseFirestore.instance
+        // Cek via field ticketCode terindeks
+        final byCodeQuery = await FirebaseFirestore.instance
             .collection('tickets')
-            .limit(100)
+            .where('ticketCode', isEqualTo: code.trim().toUpperCase())
+            .limit(1)
             .get();
 
-        for (final doc in query.docs) {
-          if (doc.id.toLowerCase().startsWith(cleanCode)) {
-            ticketDoc = doc;
-            break;
+        if (byCodeQuery.docs.isNotEmpty) {
+          ticketDoc = byCodeQuery.docs.first;
+        } else {
+          // Range query Firestore untuk prefix document ID (skala jutaan dokumen)
+          final rangeQuery = await FirebaseFirestore.instance
+              .collection('tickets')
+              .orderBy(FieldPath.documentId)
+              .startAt([cleanCode])
+              .endAt(['$cleanCode\uf8ff'])
+              .limit(1)
+              .get();
+
+          if (rangeQuery.docs.isNotEmpty) {
+            ticketDoc = rangeQuery.docs.first;
           }
         }
       }
@@ -103,12 +116,28 @@ class _CheckInScreenState extends State<CheckInScreen> {
         return;
       }
 
-      if (status == 'cancelled') {
+      if (status == 'cancelled' || status == 'event_cancelled') {
+        final isEventCancelled = status == 'event_cancelled';
         if (mounted) {
           _showResultDialog(
             isSuccess: false,
-            title: 'Tiket Telah Dibatalkan',
-            message: 'Tiket atas nama $attendeeName telah dibatalkan oleh pengguna.',
+            title: isEventCancelled ? 'Event Dibatalkan' : 'Tiket Telah Dibatalkan',
+            message: isEventCancelled
+                ? 'Acara untuk tiket ini telah dibatalkan oleh panitia penyelenggara.'
+                : 'Tiket atas nama $attendeeName telah dibatalkan oleh pengguna.',
+          );
+        }
+        return;
+      }
+
+      // Validasi Kesesuaian Acara (Cross-Event Gate Isolation)
+      final ticketEventId = ticketData['eventId']?.toString();
+      if (selectedEventId != null && selectedEventId!.isNotEmpty && ticketEventId != selectedEventId) {
+        if (mounted) {
+          _showResultDialog(
+            isSuccess: false,
+            title: 'Event Tidak Cocok',
+            message: 'Tiket atas nama $attendeeName terdaftar untuk acara "$eventTitle", bukan untuk "${selectedEventTitle ?? 'event yang dipilih'}" di gate ini.',
           );
         }
         return;
@@ -158,9 +187,12 @@ class _CheckInScreenState extends State<CheckInScreen> {
     String? eventTitle,
     String? ticketId,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? AppTheme.cardDark : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -182,13 +214,21 @@ class _CheckInScreenState extends State<CheckInScreen> {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: isDark ? Colors.white : AppTheme.textDark,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4),
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? AppTheme.textMutedDark : AppTheme.textMutedLight,
+                height: 1.4,
+              ),
             ),
             if (isSuccess && ticketId != null) ...[
               const SizedBox(height: 16),
@@ -196,15 +236,20 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
+                  color: isDark ? AppTheme.surfaceDark : const Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+                  border: Border.all(color: AppTheme.border(isDark)),
                 ),
                 child: Column(
                   children: [
                     Text(
                       'PASS ID: ${ticketId.substring(0, ticketId.length > 8 ? 8 : ticketId.length).toUpperCase()}',
-                      style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 13),
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: isDark ? Colors.white : AppTheme.textDark,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     const Text('Status: HADIR (VERIFIED)', style: TextStyle(color: AppTheme.success, fontWeight: FontWeight.bold, fontSize: 11)),
@@ -218,7 +263,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
               height: 46,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isSuccess ? AppTheme.primary : const Color(0xFF1E293B),
+                  backgroundColor: isSuccess ? AppTheme.primary : (isDark ? AppTheme.surfaceDark : const Color(0xFF1E293B)),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
                 onPressed: () => Navigator.pop(ctx),
@@ -233,19 +278,115 @@ class _CheckInScreenState extends State<CheckInScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AdminColors.background,
+      backgroundColor: isDark ? AppTheme.backgroundDark : AppTheme.backgroundLight,
       appBar: AppBar(
         title: const Text('Verifikasi & Check-in Tiket'),
         centerTitle: true,
         backgroundColor: Colors.transparent,
-        foregroundColor: AdminColors.textDark,
+        foregroundColor: isDark ? Colors.white : AdminColors.textDark,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            /// GATE EVENT LOCK / SELECTOR
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('events')
+                  .where('isPublished', isEqualTo: true)
+                  .snapshots(),
+              builder: (context, snap) {
+                final events = snap.data?.docs ?? [];
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppTheme.cardDark : Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: selectedEventId != null ? AppTheme.primary : AppTheme.border(isDark),
+                      width: selectedEventId != null ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        selectedEventId != null ? Icons.verified_user_rounded : Icons.door_sliding_rounded,
+                        color: selectedEventId != null ? AppTheme.primary : (isDark ? Colors.white60 : Colors.grey.shade600),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String?>(
+                            value: selectedEventId,
+                            isExpanded: true,
+                            dropdownColor: isDark ? AppTheme.surfaceDark : Colors.white,
+                            hint: Text(
+                              'Pilih Acara untuk Gate Ini',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isDark ? AppTheme.textMutedDark : AppTheme.textMutedLight,
+                              ),
+                            ),
+                            icon: Icon(Icons.arrow_drop_down_rounded, color: isDark ? Colors.white70 : Colors.black87),
+                            items: [
+                              DropdownMenuItem<String?>(
+                                value: null,
+                                child: Text(
+                                  'Semua Event (Mode Gate Terbuka)',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? Colors.white : AppTheme.textDark,
+                                  ),
+                                ),
+                              ),
+                              ...events.map((doc) {
+                                final data = doc.data() as Map<String, dynamic>;
+                                final title = data['title']?.toString() ?? 'Event';
+                                return DropdownMenuItem<String?>(
+                                  value: doc.id,
+                                  child: Text(
+                                    title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? Colors.white : AppTheme.textDark,
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ],
+                            onChanged: (val) {
+                              setState(() {
+                                selectedEventId = val;
+                                if (val == null) {
+                                  selectedEventTitle = null;
+                                } else {
+                                  final matching = events.where((d) => d.id == val).toList();
+                                  if (matching.isNotEmpty) {
+                                    selectedEventTitle = (matching.first.data() as Map<String, dynamic>)['title']?.toString();
+                                  }
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+
             /// SIMULATED SCANNER VIEWFINDER
             Container(
               width: double.infinity,
@@ -331,12 +472,12 @@ class _CheckInScreenState extends State<CheckInScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? AppTheme.cardDark : Colors.white,
                 borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+                border: Border.all(color: AppTheme.border(isDark)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -345,18 +486,18 @@ class _CheckInScreenState extends State<CheckInScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Input Manual Pass ID',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
-                      color: AdminColors.textDark,
+                      color: isDark ? Colors.white : AdminColors.textDark,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'Ketik 8 karakter Pass ID yang tertera pada Boarding Pass.',
-                    style: TextStyle(fontSize: 12, color: AdminColors.textGrey),
+                    style: TextStyle(fontSize: 12, color: isDark ? AppTheme.textMutedDark : AdminColors.textGrey),
                   ),
                   const SizedBox(height: 14),
                   Row(
@@ -365,11 +506,12 @@ class _CheckInScreenState extends State<CheckInScreen> {
                         child: TextField(
                           controller: _codeController,
                           textCapitalization: TextCapitalization.characters,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'monospace',
                             fontWeight: FontWeight.bold,
                             letterSpacing: 2,
                             fontSize: 15,
+                            color: isDark ? Colors.white : AppTheme.textDark,
                           ),
                           decoration: InputDecoration(
                             hintText: 'Contoh: A1B2C3D4',
@@ -377,15 +519,15 @@ class _CheckInScreenState extends State<CheckInScreen> {
                               fontFamily: 'monospace',
                               letterSpacing: 1,
                               fontSize: 13,
-                              color: Colors.grey.shade400,
+                              color: isDark ? AppTheme.textMutedDark : Colors.grey.shade400,
                             ),
                             prefixIcon: const Icon(Icons.pin_rounded, color: AppTheme.primary),
                             filled: true,
-                            fillColor: const Color(0xFFF8FAFC),
+                            fillColor: isDark ? AppTheme.surfaceDark : const Color(0xFFF8FAFC),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(14),
-                              borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08)),
+                              borderSide: BorderSide(color: AppTheme.border(isDark)),
                             ),
                           ),
                           onSubmitted: (v) => _processCheckIn(v),
@@ -418,12 +560,12 @@ class _CheckInScreenState extends State<CheckInScreen> {
             const SizedBox(height: 24),
 
             /// RIWAYAT CHECK-IN TERBARU
-            const Text(
+            Text(
               'Kehadiran Terbaru Hari Ini',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
-                color: AdminColors.textDark,
+                color: isDark ? Colors.white : AdminColors.textDark,
               ),
             ),
             const SizedBox(height: 10),
@@ -456,14 +598,14 @@ class _CheckInScreenState extends State<CheckInScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDark ? AppTheme.cardDark : Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+                      border: Border.all(color: AppTheme.border(isDark)),
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Text(
                         'Belum ada peserta yang check-in hari ini.',
-                        style: TextStyle(color: AdminColors.textGrey, fontSize: 13),
+                        style: TextStyle(color: isDark ? AppTheme.textMutedDark : AdminColors.textGrey, fontSize: 13),
                       ),
                     ),
                   );
@@ -488,9 +630,9 @@ class _CheckInScreenState extends State<CheckInScreen> {
                     return Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDark ? AppTheme.cardDark : Colors.white,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+                        border: Border.all(color: AppTheme.border(isDark)),
                       ),
                       child: Row(
                         children: [
@@ -509,20 +651,28 @@ class _CheckInScreenState extends State<CheckInScreen> {
                               children: [
                                 Text(
                                   attendeeName,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: isDark ? Colors.white : AppTheme.textDark,
+                                  ),
                                 ),
                                 Text(
                                   title,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 11, color: AdminColors.textGrey),
+                                  style: TextStyle(fontSize: 11, color: isDark ? AppTheme.textMutedDark : AdminColors.textGrey),
                                 ),
                               ],
                             ),
                           ),
                           Text(
                             timeStr,
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primary),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark ? AppTheme.textMutedDark : Colors.grey.shade500,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ],
                       ),

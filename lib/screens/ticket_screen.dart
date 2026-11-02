@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme/app_theme.dart';
 import '../models/event_model.dart';
 import '../widgets/event_card.dart';
-import 'ticket_service.dart';
+import '../services/ticket_service.dart';
 import 'certificate_screen.dart';
 
 class TicketScreen extends StatefulWidget {
@@ -127,10 +127,10 @@ class _TicketScreenState extends State<TicketScreen>
               child: SingleChildScrollView(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF222938) : const Color(0xFFF8FAFC),
+                    color: isDark ? AppTheme.surfaceDark : AppTheme.surfaceLight,
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                      color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+                      color: AppTheme.border(isDark),
                     ),
                   ),
                   padding: const EdgeInsets.all(22),
@@ -185,8 +185,10 @@ class _TicketScreenState extends State<TicketScreen>
                             ),
                           ],
                         ),
-                        child: CustomPaint(
-                          painter: _QrGridPainter(),
+                        child: RepaintBoundary(
+                          child: CustomPaint(
+                            painter: _QrGridPainter(),
+                          ),
                         ),
                       ),
 
@@ -205,10 +207,19 @@ class _TicketScreenState extends State<TicketScreen>
 
                       const SizedBox(height: 8),
                       Text(
-                        'Tunjukkan kode QR ini kepada panitia saat registrasi di pintu masuk.',
+                        (data['status'] == 'event_cancelled')
+                            ? 'PERHATIAN: Acara telah dibatalkan oleh panitia. Tiket tidak lagi berlaku.'
+                            : (data['status'] == 'cancelled')
+                                ? 'PERHATIAN: Tiket ini telah dibatalkan oleh pengguna.'
+                                : 'Tunjukkan kode QR ini kepada panitia saat registrasi di pintu masuk.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: isDark ? AppTheme.textMutedDark : AppTheme.textMutedLight,
+                          color: (data['status'] == 'cancelled' || data['status'] == 'event_cancelled')
+                              ? AppTheme.danger
+                              : (isDark ? AppTheme.textMutedDark : AppTheme.textMutedLight),
+                          fontWeight: (data['status'] == 'cancelled' || data['status'] == 'event_cancelled')
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                           fontSize: 12,
                         ),
                       ),
@@ -295,7 +306,7 @@ class _TicketScreenState extends State<TicketScreen>
                 ],
               ),
               labelColor: AppTheme.primary,
-              unselectedLabelColor: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+              unselectedLabelColor: AppTheme.textMuted(isDark),
               labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
               dividerColor: Colors.transparent,
               tabs: const [
@@ -310,8 +321,8 @@ class _TicketScreenState extends State<TicketScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _ticketList(user.uid, 'upcoming', isDark),
-          _ticketList(user.uid, 'completed', isDark),
+          _ticketList(user.uid, ['upcoming'], isDark),
+          _ticketList(user.uid, ['completed', 'cancelled', 'event_cancelled'], isDark),
           _bookmarksList(user.uid, isDark),
         ],
       ),
@@ -319,12 +330,12 @@ class _TicketScreenState extends State<TicketScreen>
   }
 
   /// ================= TICKET LIST =================
-  Widget _ticketList(String uid, String status, bool isDark) {
+  Widget _ticketList(String uid, List<String> statuses, bool isDark) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('tickets')
           .where('userId', isEqualTo: uid)
-          .where('status', isEqualTo: status)
+          .where('status', whereIn: statuses)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -332,7 +343,7 @@ class _TicketScreenState extends State<TicketScreen>
         }
 
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return _emptyState(status, isDark);
+          return _emptyState(statuses.contains('upcoming') ? 'upcoming' : 'history', isDark);
         }
 
         final docs = List<QueryDocumentSnapshot>.from(snapshot.data!.docs);
@@ -347,17 +358,20 @@ class _TicketScreenState extends State<TicketScreen>
           return bCreated.compareTo(aCreated);
         });
 
-        return ListView(
+        return ListView.separated(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          children: docs.map((doc) {
+          itemCount: docs.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 16),
+          itemBuilder: (context, index) {
+            final doc = docs[index];
             final data = doc.data() as Map<String, dynamic>;
             final eventId = data['eventId']?.toString();
             final title = data['title']?.toString() ?? 'Event Pass';
+            final status = data['status']?.toString() ?? 'upcoming';
 
             return GestureDetector(
               onTap: () => _showTicketPass(context, data, doc.id),
               child: Container(
-                margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
                   color: isDark ? AppTheme.cardDark : Colors.white,
                   borderRadius: BorderRadius.circular(20),
@@ -494,10 +508,10 @@ class _TicketScreenState extends State<TicketScreen>
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
+                            const Row(
                               children: [
-                                const Icon(Icons.verified_rounded, size: 15, color: AppTheme.success),
-                                const SizedBox(width: 5),
+                                Icon(Icons.verified_rounded, size: 15, color: AppTheme.success),
+                                SizedBox(width: 5),
                                 Text(
                                   'Hadir Terverifikasi',
                                   style: TextStyle(
@@ -510,7 +524,7 @@ class _TicketScreenState extends State<TicketScreen>
                             ),
                             ElevatedButton.icon(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFD97706),
+                                backgroundColor: AppTheme.gold,
                                 foregroundColor: Colors.white,
                                 elevation: 0,
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -541,13 +555,35 @@ class _TicketScreenState extends State<TicketScreen>
                             ),
                           ],
                         ),
+                      ] else if (status == 'cancelled' || status == 'event_cancelled') ...[
+                        const SizedBox(height: 14),
+                        const Divider(height: 1),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Icon(
+                              status == 'event_cancelled' ? Icons.event_busy_rounded : Icons.cancel_outlined,
+                              size: 15,
+                              color: status == 'event_cancelled' ? AppTheme.warning : AppTheme.danger,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              status == 'event_cancelled' ? 'Acara Dibatalkan oleh Panitia' : 'Tiket Telah Dibatalkan',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: status == 'event_cancelled' ? AppTheme.warning : AppTheme.danger,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ],
                   ),
                 ),
               ),
             );
-          }).toList(),
+          },
         );
       },
     );
@@ -572,17 +608,24 @@ class _TicketScreenState extends State<TicketScreen>
         }
 
         final eventIds = bookmarkedDocs.map((d) => d.id).toList();
+        final queryIds = eventIds.take(30).toList();
 
         return StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance.collection('events').snapshots(),
+          stream: FirebaseFirestore.instance
+              .collection('events')
+              .where(FieldPath.documentId, whereIn: queryIds)
+              .snapshots(),
           builder: (context, eventSnapshot) {
-            if (!eventSnapshot.hasData) {
+            if (eventSnapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
+            }
+
+            if (!eventSnapshot.hasData || eventSnapshot.data!.docs.isEmpty) {
+              return _emptyFavoritesState(isDark);
             }
 
             final events = eventSnapshot.data!.docs
                 .map((e) => EventModel.fromFirestore(e))
-                .where((e) => eventIds.contains(e.id))
                 .toList();
 
             if (events.isEmpty) {

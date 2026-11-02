@@ -64,7 +64,7 @@ class TermsPolicyScreen extends StatelessWidget {
         color: isDark ? AppTheme.cardDark : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+          color: AppTheme.border(isDark),
         ),
         boxShadow: [
           BoxShadow(
@@ -106,7 +106,7 @@ class TermsPolicyScreen extends StatelessWidget {
             style: TextStyle(
               height: 1.6,
               fontSize: 13,
-              color: isDark ? AppTheme.textMutedDark : const Color(0xFF475569),
+              color: AppTheme.textMuted(isDark),
             ),
           ),
         ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/admin_colors.dart';
@@ -8,13 +9,15 @@ class ManageUserScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AdminColors.background,
+      backgroundColor: isDark ? AppTheme.backgroundDark : AppTheme.backgroundLight,
       appBar: AppBar(
         title: const Text('Manage Users'),
         centerTitle: true,
         backgroundColor: Colors.transparent,
-        foregroundColor: AdminColors.textDark,
+        foregroundColor: isDark ? Colors.white : AdminColors.textDark,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('users').snapshots(),
@@ -120,6 +123,19 @@ class _UserCardItemState extends State<_UserCardItem> {
 
   Future<void> _toggleRole(String currentRole) async {
     final nextRole = (currentRole == 'super_admin' || currentRole == 'admin') ? 'user' : 'super_admin';
+
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (widget.userId == currentUser?.uid && nextRole == 'user') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppTheme.danger,
+          content: Text('Anda tidak dapat menurunkan hak akses akun Anda sendiri demi keamanan.'),
+        ),
+      );
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -173,6 +189,7 @@ class _UserCardItemState extends State<_UserCardItem> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final role = widget.userData['role']?.toString() ?? 'user';
     final name = widget.userData['fullName']?.toString() ?? 'User';
     final email = widget.userData['email']?.toString() ?? '-';
@@ -182,12 +199,12 @@ class _UserCardItemState extends State<_UserCardItem> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppTheme.cardDark : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+        border: Border.all(color: AppTheme.border(isDark)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           )
@@ -218,21 +235,27 @@ class _UserCardItemState extends State<_UserCardItem> {
                   children: [
                     Text(
                       name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 15,
-                        color: AdminColors.textDark,
+                        color: isDark ? Colors.white : AdminColors.textDark,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       email,
-                      style: const TextStyle(color: AdminColors.textGrey, fontSize: 12),
+                      style: TextStyle(
+                        color: isDark ? AppTheme.textMutedDark : AdminColors.textGrey,
+                        fontSize: 12,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Asal: $country',
-                      style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
+                      style: TextStyle(
+                        color: isDark ? Colors.white38 : Colors.grey.shade500,
+                        fontSize: 11,
+                      ),
                     ),
                   ],
                 ),
@@ -245,7 +268,7 @@ class _UserCardItemState extends State<_UserCardItem> {
           ),
 
           const SizedBox(height: 12),
-          const Divider(height: 1),
+          Divider(height: 1, color: AppTheme.border(isDark)),
 
           /// TICKET ACCORDION
           InkWell(
@@ -289,11 +312,11 @@ class _UserCardItemState extends State<_UserCardItem> {
                 ),
               )
             else if (userTickets == null || userTickets!.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Text(
                   'Belum ada tiket yang dipesan.',
-                  style: TextStyle(color: AdminColors.textGrey, fontSize: 12),
+                  style: TextStyle(color: isDark ? AppTheme.textMutedDark : AdminColors.textGrey, fontSize: 12),
                 ),
               )
             else
@@ -302,9 +325,9 @@ class _UserCardItemState extends State<_UserCardItem> {
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
+                    color: isDark ? AppTheme.surfaceDark : const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
+                    border: Border.all(color: AppTheme.border(isDark)),
                   ),
                   child: Row(
                     children: [

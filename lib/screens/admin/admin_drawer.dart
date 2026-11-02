@@ -15,8 +15,10 @@ class AdminDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Drawer(
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? AppTheme.cardDark : Colors.white,
       child: Column(
         children: [
           Container(
@@ -46,9 +48,9 @@ class AdminDrawer extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 14),
-                Column(
+                const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
                     Text(
                       'Super Admin',
                       style: TextStyle(
@@ -216,6 +218,9 @@ class AdminDrawer extends StatelessWidget {
 
             if (confirm == true) {
               await FirebaseAuth.instance.signOut();
+              if (context.mounted) {
+                Navigator.of(context).popUntil((route) => route.isFirst);
+              }
             }
           }, isDestructive: true),
 
@@ -226,17 +231,20 @@ class AdminDrawer extends StatelessWidget {
   }
 
   Widget _item(BuildContext context, IconData icon, String title, VoidCallback onTap, {bool isDestructive = false}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final itemColor = isDestructive ? AppTheme.danger : (isDark ? Colors.white : AdminColors.textDark);
+
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 2),
       leading: Icon(
         icon,
-        color: isDestructive ? AppTheme.danger : AdminColors.textDark,
+        color: itemColor,
         size: 22,
       ),
       title: Text(
         title,
         style: TextStyle(
-          color: isDestructive ? AppTheme.danger : AdminColors.textDark,
+          color: itemColor,
           fontWeight: FontWeight.w700,
           fontSize: 14,
         ),

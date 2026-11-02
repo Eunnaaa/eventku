@@ -6,8 +6,11 @@ class AppTheme {
   static const Color primaryLight = Color(0xFFFF9248);
   static const Color primaryDark = Color(0xFFE5531F);
   static const Color secondary = Color(0xFF1E2430);
-  static const Color accentBlue = Color(0xFF3880FF);
+  static const Color accentBlue = Color(0xFF3B82F6);
+  static const Color accentIndigo = Color(0xFF6366F1);
   static const Color accentPurple = Color(0xFF8B5CF6);
+  static const Color gold = Color(0xFFEAB308);
+  static const Color goldLight = Color(0xFFFEF9C3);
   static const Color success = Color(0xFF10B981);
   static const Color warning = Color(0xFFF59E0B);
   static const Color danger = Color(0xFFEF4444);
@@ -17,15 +20,27 @@ class AppTheme {
   static const Color cardLight = Colors.white;
   static const Color surfaceLight = Color(0xFFF1F5F9);
 
-  static const Color backgroundDark = Color(0xFF0F131C);
-  static const Color cardDark = Color(0xFF181E2B);
-  static const Color surfaceDark = Color(0xFF1F2738);
+  static const Color backgroundDark = Color(0xFF0B0F19);
+  static const Color cardDark = Color(0xFF151C2C);
+  static const Color surfaceDark = Color(0xFF1E2638);
 
-  // Text Colors
+  // Borders
+  static const Color borderLight = Color(0x0F000000);
+  static const Color borderDark = Color(0x14FFFFFF);
+
+  // Typography
   static const Color textDark = Color(0xFF0F172A);
   static const Color textMutedLight = Color(0xFF64748B);
-  static const Color textLight = Colors.white;
+  static const Color textLight = Color(0xFFF8FAFC);
   static const Color textMutedDark = Color(0xFF94A3B8);
+
+  // Dynamic Theme Helpers
+  static Color bg(bool isDark) => isDark ? backgroundDark : backgroundLight;
+  static Color card(bool isDark) => isDark ? cardDark : cardLight;
+  static Color surface(bool isDark) => isDark ? surfaceDark : surfaceLight;
+  static Color text(bool isDark) => isDark ? textLight : textDark;
+  static Color textMuted(bool isDark) => isDark ? textMutedDark : textMutedLight;
+  static Color border(bool isDark) => isDark ? borderDark : borderLight;
 
   static ThemeData light = ThemeData(
     useMaterial3: true,
@@ -58,22 +73,22 @@ class AppTheme {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
+        side: const BorderSide(color: borderLight),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: Colors.white,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-      hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+      hintStyle: const TextStyle(color: textMutedLight, fontSize: 14),
       prefixIconColor: primary,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08)),
+        borderSide: const BorderSide(color: borderLight),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08)),
+        borderSide: const BorderSide(color: borderLight),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
@@ -93,8 +108,8 @@ class AppTheme {
         textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
       ),
     ),
-    dividerTheme: DividerThemeData(
-      color: Colors.black.withValues(alpha: 0.06),
+    dividerTheme: const DividerThemeData(
+      color: borderLight,
       thickness: 1,
     ),
   );
@@ -130,22 +145,22 @@ class AppTheme {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+        side: const BorderSide(color: borderDark),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: surfaceDark,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-      hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 14),
+      hintStyle: const TextStyle(color: textMutedDark, fontSize: 14),
       prefixIconColor: primaryLight,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+        borderSide: const BorderSide(color: borderDark),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+        borderSide: const BorderSide(color: borderDark),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
@@ -165,8 +180,8 @@ class AppTheme {
         textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
       ),
     ),
-    dividerTheme: DividerThemeData(
-      color: Colors.white.withValues(alpha: 0.08),
+    dividerTheme: const DividerThemeData(
+      color: borderDark,
       thickness: 1,
     ),
   );

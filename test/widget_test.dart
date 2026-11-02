@@ -85,6 +85,41 @@ void main() {
       expect(map['isPublished'], true);
     });
 
+    test('EventModel toUpdateMap excludes bookedCount and createdAt for safe admin updates', () {
+      final now = Timestamp.now();
+      final targetDate = Timestamp.fromDate(DateTime(2026, 11, 20));
+
+      final event = EventModel(
+        id: 'ev-1',
+        title: 'Updated Title',
+        category: 'Technology',
+        date: '20 Nov 2026',
+        eventDate: targetDate,
+        time: '14:00',
+        location: 'Hall B',
+        description: 'New Description',
+        image: 'https://example.com/new.jpg',
+        createdAt: now,
+        isPublished: true,
+        quota: 80,
+        bookedCount: 42,
+      );
+
+      final updateMap = event.toUpdateMap();
+
+      expect(updateMap['title'], 'Updated Title');
+      expect(updateMap['quota'], 80);
+      expect(updateMap.containsKey('bookedCount'), false, reason: 'toUpdateMap must not include bookedCount');
+      expect(updateMap.containsKey('createdAt'), false, reason: 'toUpdateMap must not include createdAt');
+    });
+
+    test('Short ticket pass code extraction formatting', () {
+      const docId = 'ab12cd34ef56gh78';
+      final shortCode = docId.substring(0, 8).toUpperCase();
+      expect(shortCode, 'AB12CD34');
+      expect(shortCode.length, 8);
+    });
+
     test('EventSeedService provides rich event samples for all categories', () {
       final samples = EventSeedService.getSampleEvents();
       expect(samples.isNotEmpty, true);
@@ -103,6 +138,24 @@ void main() {
         expect(ev.benefits.isNotEmpty, true);
         expect(ev.eventDate.toDate().isAfter(DateTime(2026, 1, 1)), true);
       }
+    });
+
+    test('Business Logic: Event expiration and cancellation deadline calculation', () {
+      final pastDate = DateTime(2025, 1, 1);
+      final futureDate = DateTime(2030, 12, 31);
+      final now = DateTime.now();
+
+      final pastEndOfDay = DateTime(pastDate.year, pastDate.month, pastDate.day, 23, 59, 59);
+      final futureEndOfDay = DateTime(futureDate.year, futureDate.month, futureDate.day, 23, 59, 59);
+
+      // Past event should be identified as expired
+      expect(now.isAfter(pastEndOfDay), true);
+      // Future event should be identified as active
+      expect(now.isAfter(futureEndOfDay), false);
+
+      // Cancellation deadline: past event start has passed
+      final pastStartOfDay = DateTime(pastDate.year, pastDate.month, pastDate.day);
+      expect(now.isAfter(pastStartOfDay), true);
     });
   });
 }

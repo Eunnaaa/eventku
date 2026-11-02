@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/event_model.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/admin_colors.dart';
-import 'admin_event_service.dart';
+import '../../services/admin_event_service.dart';
 import 'event_form_screen.dart';
 import 'event_attendees_screen.dart';
 import '../../services/event_seed_service.dart';
@@ -11,12 +11,16 @@ class ManageEventScreen extends StatelessWidget {
   const ManageEventScreen({super.key});
 
   Future<void> _confirmDelete(BuildContext context, EventModel event) async {
+    final warningText = event.bookedCount > 0
+        ? 'Perhatian: Event "${event.title}" telah memiliki ${event.bookedCount} tiket dipesan oleh peserta. Menghapus event ini akan menghilangkan akses acara bagi peserta terdaftar.\n\nApakah Anda tetap yakin ingin menghapus?'
+        : 'Apakah Anda yakin ingin menghapus event "${event.title}"? Tindakan ini tidak dapat dibatalkan.';
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Hapus Event?'),
-        content: Text('Apakah Anda yakin ingin menghapus event "${event.title}"? Tindakan ini tidak dapat dibatalkan.'),
+        content: Text(warningText),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -134,12 +138,14 @@ class ManageEventScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AdminColors.background,
+      backgroundColor: isDark ? AppTheme.backgroundDark : AppTheme.backgroundLight,
       appBar: AppBar(
         title: const Text('Manage Events'),
         centerTitle: true,
-        foregroundColor: AdminColors.textDark,
+        foregroundColor: isDark ? Colors.white : AdminColors.textDark,
         backgroundColor: Colors.transparent,
         actions: [
           IconButton(
@@ -223,12 +229,12 @@ class ManageEventScreen extends StatelessWidget {
               return Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDark ? AppTheme.cardDark : Colors.white,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+                  border: Border.all(color: AppTheme.border(isDark)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.03),
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -267,10 +273,10 @@ class ManageEventScreen extends StatelessWidget {
                                 event.title.isNotEmpty ? event.title : '(Tanpa Judul)',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.w800,
                                   fontSize: 15,
-                                  color: AdminColors.textDark,
+                                  color: isDark ? Colors.white : AdminColors.textDark,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -297,8 +303,8 @@ class ManageEventScreen extends StatelessWidget {
                                       '${event.date} • ${event.location}',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: AdminColors.textGrey,
+                                      style: TextStyle(
+                                        color: isDark ? AppTheme.textMutedDark : AdminColors.textGrey,
                                         fontSize: 11,
                                       ),
                                     ),
@@ -312,7 +318,7 @@ class ManageEventScreen extends StatelessWidget {
                     ),
 
                     const SizedBox(height: 12),
-                    const Divider(height: 1),
+                    Divider(height: 1, color: AppTheme.border(isDark)),
                     const SizedBox(height: 8),
 
                     /// CONTROLS BAR: PUBLISH STATUS & ACTIONS

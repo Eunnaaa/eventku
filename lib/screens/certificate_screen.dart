@@ -24,7 +24,7 @@ class CertificateScreen extends StatelessWidget {
     final speaker = speakerName.isNotEmpty ? speakerName : 'Lead Instructor & Speaker';
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: AppTheme.backgroundDark,
       appBar: AppBar(
         title: const Text('E-Sertifikat Resmi', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,

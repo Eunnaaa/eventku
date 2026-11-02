@@ -117,13 +117,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(
-          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+          color: AppTheme.border(isDark),
         ),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(
-          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06),
+          color: AppTheme.border(isDark),
         ),
       ),
       focusedBorder: OutlineInputBorder(

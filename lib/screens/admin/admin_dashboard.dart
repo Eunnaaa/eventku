@@ -13,6 +13,8 @@ class AdminDashboard extends StatelessWidget {
   const AdminDashboard({super.key});
 
   void _showTicketsOverview(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -21,9 +23,9 @@ class AdminDashboard extends StatelessWidget {
         return Container(
           height: MediaQuery.of(context).size.height * 0.75,
           padding: const EdgeInsets.all(22),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.cardDark : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -33,7 +35,7 @@ class AdminDashboard extends StatelessWidget {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
+                    color: isDark ? Colors.white24 : Colors.grey.shade300,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -42,16 +44,16 @@ class AdminDashboard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Tiket Yang Dipesan',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
-                      color: AdminColors.textDark,
+                      color: isDark ? Colors.white : AdminColors.textDark,
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded),
+                    icon: Icon(Icons.close_rounded, color: isDark ? Colors.white70 : Colors.black87),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -70,7 +72,12 @@ class AdminDashboard extends StatelessWidget {
                     }
                     final docs = snapshot.data?.docs ?? [];
                     if (docs.isEmpty) {
-                      return const Center(child: Text('Belum ada tiket yang dipesan.'));
+                      return Center(
+                        child: Text(
+                          'Belum ada tiket yang dipesan.',
+                          style: TextStyle(color: isDark ? AppTheme.textMutedDark : AppTheme.textMutedLight),
+                        ),
+                      );
                     }
                     return ListView.separated(
                       itemCount: docs.length,
@@ -83,9 +90,9 @@ class AdminDashboard extends StatelessWidget {
                         return Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
+                            color: isDark ? AppTheme.surfaceDark : const Color(0xFFF8FAFC),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+                            border: Border.all(color: AppTheme.border(isDark)),
                           ),
                           child: Row(
                             children: [
@@ -107,14 +114,21 @@ class AdminDashboard extends StatelessWidget {
                                       data['title']?.toString() ?? 'Event',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                        color: isDark ? Colors.white : AppTheme.textDark,
+                                      ),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       '${data['date'] ?? ''} • Lokasi: ${data['location'] ?? ''}',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 11, color: AdminColors.textGrey),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: isDark ? AppTheme.textMutedDark : AdminColors.textGrey,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -123,7 +137,7 @@ class AdminDashboard extends StatelessWidget {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: isUpcoming ? AppTheme.success.withValues(alpha: 0.12) : Colors.grey.shade200,
+                                  color: isUpcoming ? AppTheme.success.withValues(alpha: 0.12) : (isDark ? Colors.white10 : Colors.grey.shade200),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
@@ -131,7 +145,7 @@ class AdminDashboard extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w800,
-                                    color: isUpcoming ? AppTheme.success : Colors.grey.shade700,
+                                    color: isUpcoming ? AppTheme.success : (isDark ? Colors.white60 : Colors.grey.shade700),
                                   ),
                                 ),
                               ),
@@ -152,13 +166,15 @@ class AdminDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       drawer: const AdminDrawer(),
-      backgroundColor: AdminColors.background,
+      backgroundColor: isDark ? AppTheme.backgroundDark : AppTheme.backgroundLight,
       appBar: AppBar(
         title: const Text('Admin Console'),
         backgroundColor: Colors.transparent,
-        foregroundColor: AdminColors.textDark,
+        foregroundColor: isDark ? Colors.white : AdminColors.textDark,
         elevation: 0,
         centerTitle: true,
       ),
@@ -305,12 +321,12 @@ class AdminDashboard extends StatelessWidget {
 
             const SizedBox(height: 22),
 
-            const Text(
+            Text(
               'Statistik & Menu',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
-                color: AdminColors.textDark,
+                color: isDark ? Colors.white : AdminColors.textDark,
                 letterSpacing: -0.3,
               ),
             ),
@@ -384,18 +400,20 @@ class AdminDashboard extends StatelessWidget {
     required Color accentColor,
     required VoidCallback onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return InkWell(
       borderRadius: BorderRadius.circular(20),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: AdminColors.card,
+          color: isDark ? AppTheme.cardDark : Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+          border: Border.all(color: AppTheme.border(isDark)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -412,22 +430,22 @@ class AdminDashboard extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 2),
               );
             } else if (snapshot.hasError) {
-              countWidget = const Text(
+              countWidget = Text(
                 '-',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: AdminColors.textDark,
+                  color: isDark ? Colors.white : AdminColors.textDark,
                 ),
               );
             } else {
               final count = snapshot.data?.count ?? 0;
               countWidget = Text(
                 count.toString(),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w900,
-                  color: AdminColors.textDark,
+                  color: isDark ? Colors.white : AdminColors.textDark,
                 ),
               );
             }
@@ -449,8 +467,8 @@ class AdminDashboard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: AdminColors.textGrey,
+                  style: TextStyle(
+                    color: isDark ? AppTheme.textMutedDark : AdminColors.textGrey,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -465,6 +483,7 @@ class AdminDashboard extends StatelessWidget {
 
   /// ===================== ANALYTICS CARD =====================
   Widget _analyticsCard(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final weeklyData = [12, 18, 14, 22, 19, 16, 25];
     final maxValue = weeklyData.reduce((a, b) => a > b ? a : b);
 
@@ -481,12 +500,12 @@ class AdminDashboard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: AdminColors.card,
+          color: isDark ? AppTheme.cardDark : Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+          border: Border.all(color: AppTheme.border(isDark)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -515,19 +534,19 @@ class AdminDashboard extends StatelessWidget {
               ),
             ),
             const Spacer(),
-            const Text(
+            Text(
               'Aktivitas',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w900,
-                color: AdminColors.textDark,
+                color: isDark ? Colors.white : AdminColors.textDark,
               ),
             ),
             const SizedBox(height: 2),
-            const Text(
+            Text(
               'Tren Mingguan',
               style: TextStyle(
-                color: AdminColors.textGrey,
+                color: isDark ? AppTheme.textMutedDark : AdminColors.textGrey,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),

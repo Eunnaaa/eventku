@@ -105,12 +105,12 @@ class _EventListScreenState extends State<EventListScreen> {
                     decoration: BoxDecoration(
                       color: active
                           ? AppTheme.primary
-                          : (isDark ? AppTheme.cardDark : Colors.white),
+                          : AppTheme.card(isDark),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: active
                             ? Colors.transparent
-                            : (isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06)),
+                            : AppTheme.border(isDark),
                       ),
                       boxShadow: active
                           ? [
@@ -129,7 +129,7 @@ class _EventListScreenState extends State<EventListScreen> {
                         fontWeight: FontWeight.bold,
                         color: active
                             ? Colors.white
-                            : (isDark ? Colors.white70 : const Color(0xFF475569)),
+                            : (isDark ? Colors.white70 : AppTheme.textMutedLight),
                       ),
                     ),
                   ),
@@ -258,16 +258,16 @@ class _EventListScreenState extends State<EventListScreen> {
     return GestureDetector(
       onTap: () => setState(() => selectedType = value),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
           color: active
-              ? (isDark ? const Color(0xFF2C3549) : const Color(0xFF1E2430))
+              ? AppTheme.accentBlue.withValues(alpha: isDark ? 0.22 : 0.12)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: active
-                ? Colors.transparent
-                : (isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade300),
+                ? AppTheme.accentBlue
+                : AppTheme.border(isDark),
           ),
         ),
         child: Row(
@@ -276,7 +276,7 @@ class _EventListScreenState extends State<EventListScreen> {
             Icon(
               icon,
               size: 13,
-              color: active ? Colors.white : (isDark ? Colors.white60 : Colors.grey.shade600),
+              color: active ? AppTheme.accentBlue : AppTheme.textMuted(isDark),
             ),
             const SizedBox(width: 5),
             Text(
@@ -284,7 +284,7 @@ class _EventListScreenState extends State<EventListScreen> {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: active ? FontWeight.bold : FontWeight.w600,
-                color: active ? Colors.white : (isDark ? Colors.white60 : Colors.grey.shade600),
+                color: active ? (isDark ? Colors.white : AppTheme.accentBlue) : AppTheme.textMuted(isDark),
               ),
             ),
           ],

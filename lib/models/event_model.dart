@@ -160,4 +160,24 @@ class EventModel {
       'benefits': benefits,
     };
   }
+
+  /// Map payload aman untuk update event tanpa menimpa bookedCount & createdAt
+  Map<String, dynamic> toUpdateMap() {
+    return {
+      'title': title,
+      'category': category,
+      'date': date,
+      'eventDate': eventDate,
+      'time': time,
+      'location': location,
+      'description': description,
+      'image': image,
+      'isPublished': isPublished,
+      'quota': quota,
+      'speakerName': speakerName,
+      'speakerRole': speakerRole,
+      'isOnline': isOnline,
+      'benefits': benefits,
+    };
+  }
 }

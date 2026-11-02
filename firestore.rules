@@ -13,8 +13,8 @@ service cloud.firestore {
 
     // Koleksi users
     match /users/{userId} {
-      // User dapat membaca datanya sendiri atau admin dapat membaca semua
-      allow read: if isAuthenticated();
+      // User hanya dapat membaca datanya sendiri atau admin dapat membaca semua
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       // Registrasi baru harus menetapkan role sebagai 'user'
       allow create: if isAuthenticated() && request.auth.uid == userId && request.resource.data.role == 'user';
       // User hanya dapat update profile sendiri (dan tidak boleh mempromosikan role sendiri kecuali admin)
@@ -35,24 +35,35 @@ service cloud.firestore {
       allow read: if true;
       // Admin memiliki akses tulis penuh
       allow create, delete: if isAdmin();
-      // Update diizinkan untuk admin atau pembaruan atomik bookedCount saat booking/cancel tiket
+      // Update diizinkan untuk admin atau pembaruan atomik bookedCount saat booking/cancel (+1 / -1 dalam rentang aman)
       allow update: if isAdmin() || (
         isAuthenticated() && 
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookedCount'])
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bookedCount']) &&
+        (
+          (request.resource.data.bookedCount == resource.data.bookedCount + 1 && resource.data.isPublished == true) ||
+          request.resource.data.bookedCount == resource.data.bookedCount - 1
+        ) &&
+        request.resource.data.bookedCount >= 0 &&
+        (resource.data.quota == 0 || request.resource.data.bookedCount <= resource.data.quota)
       );
     }
 
     // Koleksi tickets
     match /tickets/{ticketId} {
       allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      // Admin dapat update/delete, atau pengguna dapat membatalkan tiket miliknya sendiri
+      // Pembuatan tiket baru: harus milik user sendiri dan status awal harus 'upcoming'
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.status == 'upcoming';
+      
+      // Admin dapat update/delete, atau pengguna dapat membatalkan tiket miliknya sendiri yang masih upcoming
       allow delete: if isAdmin();
       allow update: if isAuthenticated() && (
         isAdmin() || 
         (
           resource.data.userId == request.auth.uid && 
           request.resource.data.userId == resource.data.userId &&
+          resource.data.status == 'upcoming' &&
           request.resource.data.status == 'cancelled' &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt'])
         )
