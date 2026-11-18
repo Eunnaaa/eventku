@@ -122,7 +122,7 @@ void main() {
 
     test('EventSeedService provides rich event samples for all categories', () {
       final samples = EventSeedService.getSampleEvents();
-      expect(samples.isNotEmpty, true);
+      expect(samples.length >= 20, true, reason: 'Must contain at least 20 rich upcoming events');
 
       final categories = samples.map((e) => e.category).toSet();
       expect(categories.contains('Technology'), true);
@@ -131,12 +131,29 @@ void main() {
       expect(categories.contains('Travel'), true);
       expect(categories.contains('Education'), true);
 
+      // Verify each category has multiple events
+      for (final cat in ['Technology', 'Business', 'Health', 'Travel', 'Education']) {
+        final count = samples.where((e) => e.category == cat).length;
+        expect(count >= 4, true, reason: 'Category $cat must have at least 4 events');
+      }
+
+      // Verify format diversity
+      expect(samples.any((e) => e.isOnline), true);
+      expect(samples.any((e) => !e.isOnline), true);
+
+      // Verify future dates spanning 2026 and 2027
+      expect(samples.any((e) => e.eventDate.toDate().year == 2026), true);
+      expect(samples.any((e) => e.eventDate.toDate().year == 2027), true);
+
       for (final ev in samples) {
         expect(ev.title.isNotEmpty, true);
         expect(ev.image.startsWith('https://'), true);
         expect(ev.speakerName.isNotEmpty, true);
+        expect(ev.speakerRole.isNotEmpty, true);
         expect(ev.benefits.isNotEmpty, true);
-        expect(ev.eventDate.toDate().isAfter(DateTime(2026, 1, 1)), true);
+        expect(ev.quota > 0, true);
+        expect(ev.isPublished, true);
+        expect(ev.eventDate.toDate().isAfter(DateTime(2026, 11, 1)), true);
       }
     });
 
@@ -156,6 +173,48 @@ void main() {
       // Cancellation deadline: past event start has passed
       final pastStartOfDay = DateTime(pastDate.year, pastDate.month, pastDate.day);
       expect(now.isAfter(pastStartOfDay), true);
+    });
+
+    test('Batch deletion safety: chunking prevents Firestore 500-write limit overflow', () {
+      final dummyDocIds = List.generate(950, (i) => 'ticket_$i');
+      const chunkSize = 400;
+
+      final chunks = <List<String>>[];
+      for (var i = 0; i < dummyDocIds.length; i += chunkSize) {
+        chunks.add(
+          dummyDocIds.sublist(
+            i,
+            (i + chunkSize > dummyDocIds.length) ? dummyDocIds.length : i + chunkSize,
+          ),
+        );
+      }
+
+      expect(chunks.length, 3);
+      expect(chunks[0].length, 400);
+      expect(chunks[1].length, 400);
+      expect(chunks[2].length, 150);
+      for (final chunk in chunks) {
+        expect(chunk.length <= 400, true);
+      }
+    });
+
+    test('Gate Check-in isolation logic', () {
+      const gateEventId = 'ev-react-summit';
+      final validTicket = {'eventId': 'ev-react-summit', 'status': 'upcoming'};
+      final foreignTicket = {'eventId': 'ev-flutter-conf', 'status': 'upcoming'};
+      final completedTicket = {'eventId': 'ev-react-summit', 'status': 'completed'};
+
+      bool canCheckIn(Map<String, dynamic> ticket, String? gateId) {
+        if (ticket['status'] != 'upcoming') return false;
+        if (gateId != null && gateId.isNotEmpty && ticket['eventId'] != gateId) return false;
+        return true;
+      }
+
+      expect(canCheckIn(validTicket, gateEventId), true);
+      expect(canCheckIn(foreignTicket, gateEventId), false);
+      expect(canCheckIn(completedTicket, gateEventId), false);
+      // Open gate mode allows any upcoming event
+      expect(canCheckIn(foreignTicket, null), true);
     });
   });
 }

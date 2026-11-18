@@ -145,68 +145,72 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ),
       body: isFetching
           ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(20),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    /// FULL NAME
-                    TextFormField(
-                      controller: fullName,
-                      style: TextStyle(color: isDark ? Colors.white : AppTheme.textDark, fontSize: 14),
-                      decoration: inputStyle('Nama Lengkap', Icons.person_outline_rounded, isDark),
-                      validator: (v) =>
-                          v == null || v.trim().isEmpty ? 'Nama tidak boleh kosong' : null,
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    /// COUNTRY
-                    TextFormField(
-                      controller: country,
-                      style: TextStyle(color: isDark ? Colors.white : AppTheme.textDark, fontSize: 14),
-                      decoration: inputStyle('Kota / Asal Domisili', Icons.location_city_rounded, isDark),
-                      validator: (v) =>
-                          v == null || v.trim().isEmpty ? 'Kota / Negara tidak boleh kosong' : null,
-                    ),
-
-                    const Spacer(),
-
-                    /// SAVE BUTTON
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primary,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        onPressed: isLoading ? null : saveProfile,
-                        child: isLoading
-                            ? const SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text(
-                                'Simpan Perubahan',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                ),
-                              ),
+          : GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () => FocusScope.of(context).unfocus(),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      /// FULL NAME
+                      TextFormField(
+                        controller: fullName,
+                        style: TextStyle(color: isDark ? Colors.white : AppTheme.textDark, fontSize: 14),
+                        decoration: inputStyle('Nama Lengkap', Icons.person_outline_rounded, isDark),
+                        validator: (v) =>
+                            v == null || v.trim().isEmpty ? 'Nama tidak boleh kosong' : null,
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
+
+                      const SizedBox(height: 16),
+
+                      /// COUNTRY
+                      TextFormField(
+                        controller: country,
+                        style: TextStyle(color: isDark ? Colors.white : AppTheme.textDark, fontSize: 14),
+                        decoration: inputStyle('Kota / Asal Domisili', Icons.location_city_rounded, isDark),
+                        validator: (v) =>
+                            v == null || v.trim().isEmpty ? 'Kota / Negara tidak boleh kosong' : null,
+                      ),
+
+                      const Spacer(),
+
+                      /// SAVE BUTTON
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primary,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          onPressed: isLoading ? null : saveProfile,
+                          child: isLoading
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  'Simpan Perubahan',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
                 ),
               ),
             ),

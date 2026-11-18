@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/event_model.dart';
 import '../widgets/event_card.dart';
 import '../theme/app_theme.dart';
+import '../services/event_seed_service.dart';
 import 'ticket_screen.dart';
 import 'event_list_screen.dart';
 import 'profile_screen.dart';
@@ -19,6 +20,77 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
   String selectedCategory = 'All';
+  bool _isSeeding = false;
+
+  Future<void> _handleSeedUpcoming() async {
+    if (_isSeeding) return;
+    setState(() => _isSeeding = true);
+
+    try {
+      final added = await EventSeedService.seedAllCategories();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppTheme.success,
+            behavior: SnackBarBehavior.floating,
+            content: Text(
+              added > 0
+                  ? 'Berhasil memuat $added event mendatang baru ke database!'
+                  : 'Semua event sampel sudah tersinkronisasi.',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        final err = e.toString();
+        if (err.contains('permission-denied')) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Row(
+                children: [
+                  Icon(Icons.shield_rounded, color: AppTheme.danger),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text('Akses Khusus Admin', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+              content: const Text(
+                'Akun Anda saat ini memiliki role "user" (peserta biasa), sedangkan aturan keamanan Firestore (Security Rules) membatasi penulisan event baru hanya untuk role "super_admin" atau "admin".\n\n'
+                'Untuk mengaktifkan akses Super Admin akun Anda:\n'
+                '1. Buka Firebase Console (project: eventku-s)\n'
+                '2. Masuk ke Firestore Database > koleksi users\n'
+                '3. Ubah field "role" akun Anda dari "user" menjadi "super_admin".',
+                style: TextStyle(fontSize: 13, height: 1.45),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Mengerti', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary)),
+                ),
+              ],
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: AppTheme.danger,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 4),
+              content: Text('Gagal menyinkronkan event: $e'),
+            ),
+          );
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSeeding = false);
+      }
+    }
+  }
 
   final List<Map<String, dynamic>> categories = [
     {'name': 'All', 'icon': Icons.grid_view_rounded},
@@ -57,7 +129,10 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       backgroundColor: isDark ? AppTheme.backgroundDark : AppTheme.backgroundLight,
-      body: pages[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: pages,
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: isDark ? AppTheme.cardDark : Colors.white,
@@ -554,8 +629,15 @@ class _HomePageState extends State<HomePage> {
                     .map((e) => EventModel.fromFirestore(e))
                     .toList();
 
-                // 1. Upcoming Events list
-                var upcomingEvents = List<EventModel>.from(allEvents);
+                final now = DateTime.now();
+                final todayStart = DateTime(now.year, now.month, now.day);
+
+                // 1. Upcoming Events list (acara hari ini hingga masa mendatang)
+                var upcomingEvents = allEvents.where((e) {
+                  final dt = e.eventDate.toDate();
+                  final endOfDay = DateTime(dt.year, dt.month, dt.day, 23, 59, 59);
+                  return endOfDay.isAfter(todayStart);
+                }).toList();
                 upcomingEvents.sort((a, b) => a.eventDate.compareTo(b.eventDate));
 
                 if (selectedCategory != 'All') {
@@ -600,6 +682,27 @@ class _HomePageState extends State<HomePage> {
                                       color: isDark ? Colors.white60 : Colors.grey.shade600,
                                       fontWeight: FontWeight.w600,
                                       fontSize: 13,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.primary,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                    onPressed: _isSeeding ? null : _handleSeedUpcoming,
+                                    icon: _isSeeding
+                                        ? const SizedBox(
+                                            width: 14,
+                                            height: 14,
+                                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                          )
+                                        : const Icon(Icons.auto_awesome_rounded, size: 16),
+                                    label: Text(
+                                      _isSeeding ? 'Memuat Data...' : 'Muat Event Sampel',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                                     ),
                                   ),
                                 ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
@@ -132,6 +133,44 @@ class ProfileScreen extends StatelessWidget {
                             fontWeight: FontWeight.w800,
                             letterSpacing: 0.5,
                             color: (role == 'SUPER_ADMIN' || role == 'ADMIN') ? AppTheme.accentBlue : AppTheme.primary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: user.uid));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              behavior: SnackBarBehavior.floating,
+                              content: Text('UID akun disalin ke clipboard!'),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'UID: ${user.uid.length > 12 ? user.uid.substring(0, 12) : user.uid}...',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontFamily: 'monospace',
+                                  color: isDark ? Colors.white60 : Colors.black54,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.copy_rounded,
+                                size: 12,
+                                color: isDark ? Colors.white60 : Colors.black54,
+                              ),
+                            ],
                           ),
                         ),
                       ),

@@ -18,6 +18,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   bool isBooking = false;
 
   Future<void> _handleBookTicket(EventModel currentEvent) async {
+    if (isBooking) return;
     try {
       setState(() => isBooking = true);
 

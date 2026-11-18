@@ -187,6 +187,82 @@ class _UserCardItemState extends State<_UserCardItem> {
     }
   }
 
+  Future<void> _deleteUser() async {
+    final email = widget.userData['email']?.toString() ?? '-';
+    final name = widget.userData['fullName']?.toString() ?? 'User';
+    final currentUser = FirebaseAuth.instance.currentUser;
+
+    if (widget.userId == currentUser?.uid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppTheme.danger,
+          content: Text('Anda tidak dapat menghapus akun Anda sendiri saat sedang login.'),
+        ),
+      );
+      return;
+    }
+
+    if (email == 'superadmin@eventku.com') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppTheme.danger,
+          content: Text('Akun Super Admin utama tidak boleh dihapus demi keamanan sistem.'),
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Hapus Akun Pengguna?'),
+        content: Text('Apakah Anda yakin ingin menghapus akun "$name" ($email)? Tindakan ini akan menghapus data profil dari database.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.danger,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Hapus Akun', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await FirebaseFirestore.instance.collection('users').doc(widget.userId).delete();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: AppTheme.success,
+              content: Text('Akun $email berhasil dihapus'),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: AppTheme.danger,
+              content: Text('Gagal menghapus akun: $e'),
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -260,9 +336,21 @@ class _UserCardItemState extends State<_UserCardItem> {
                   ],
                 ),
               ),
-              GestureDetector(
-                onTap: () => _toggleRole(role),
-                child: _roleBadge(role),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GestureDetector(
+                    onTap: () => _toggleRole(role),
+                    child: _roleBadge(role),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded, size: 20, color: AppTheme.danger),
+                    tooltip: 'Hapus Akun',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: _deleteUser,
+                  ),
+                ],
               ),
             ],
           ),

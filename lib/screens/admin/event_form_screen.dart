@@ -204,11 +204,14 @@ class _EventFormScreenState extends State<EventFormScreen> {
         backgroundColor: Colors.transparent,
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             /// SECTION: INFORMASI UTAMA
             _sectionCard(
               title: 'Informasi Acara',
@@ -313,8 +316,9 @@ class _EventFormScreenState extends State<EventFormScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _sectionCard({required String title, required List<Widget> children}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;

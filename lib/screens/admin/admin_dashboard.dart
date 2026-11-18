@@ -419,8 +419,8 @@ class AdminDashboard extends StatelessWidget {
             ),
           ],
         ),
-        child: FutureBuilder<AggregateQuerySnapshot>(
-          future: FirebaseFirestore.instance.collection(collection).count().get(),
+        child: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance.collection(collection).limit(500).snapshots(),
           builder: (context, snapshot) {
             Widget countWidget;
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -430,16 +430,36 @@ class AdminDashboard extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 2),
               );
             } else if (snapshot.hasError) {
-              countWidget = Text(
-                '-',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : AdminColors.textDark,
-                ),
+              countWidget = StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance.collection('events').snapshots(),
+                builder: (context, evSnap) {
+                  if (collection == 'tickets' && evSnap.hasData) {
+                    int totalBooked = 0;
+                    for (final doc in evSnap.data!.docs) {
+                      final b = doc.data() as Map<String, dynamic>;
+                      totalBooked += ((b['bookedCount'] is num) ? (b['bookedCount'] as num).toInt() : 0);
+                    }
+                    return Text(
+                      totalBooked.toString(),
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        color: isDark ? Colors.white : AdminColors.textDark,
+                      ),
+                    );
+                  }
+                  return Text(
+                    '-',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : AdminColors.textDark,
+                    ),
+                  );
+                },
               );
             } else {
-              final count = snapshot.data?.count ?? 0;
+              final count = snapshot.data?.docs.length ?? 0;
               countWidget = Text(
                 count.toString(),
                 style: TextStyle(

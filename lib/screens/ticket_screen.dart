@@ -6,6 +6,7 @@ import '../models/event_model.dart';
 import '../widgets/event_card.dart';
 import '../services/ticket_service.dart';
 import 'certificate_screen.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 class TicketScreen extends StatefulWidget {
   const TicketScreen({super.key});
@@ -169,10 +170,10 @@ class _TicketScreenState extends State<TicketScreen>
                         child: Divider(),
                       ),
 
-                      /// SIMULATED QR CODE PASS
+                      /// REAL SCANNABLE QR CODE PASS
                       Container(
-                        width: 180,
-                        height: 180,
+                        width: 190,
+                        height: 190,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: Colors.white,
@@ -185,9 +186,20 @@ class _TicketScreenState extends State<TicketScreen>
                             ),
                           ],
                         ),
-                        child: RepaintBoundary(
-                          child: CustomPaint(
-                            painter: _QrGridPainter(),
+                        child: Center(
+                          child: QrImageView(
+                            data: ticketId,
+                            version: QrVersions.auto,
+                            size: 166,
+                            backgroundColor: Colors.white,
+                            eyeStyle: const QrEyeStyle(
+                              eyeShape: QrEyeShape.square,
+                              color: Color(0xFF0F172A),
+                            ),
+                            dataModuleStyle: const QrDataModuleStyle(
+                              dataModuleShape: QrDataModuleShape.square,
+                              color: Color(0xFF0F172A),
+                            ),
                           ),
                         ),
                       ),
@@ -756,50 +768,4 @@ class _TicketScreenState extends State<TicketScreen>
   }
 }
 
-/// Custom painter to draw a clean simulated QR code pattern without external library
-class _QrGridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.black87
-      ..style = PaintingStyle.fill;
 
-    // Corner positioning boxes
-    void drawCorner(double x, double y) {
-      canvas.drawRect(Rect.fromLTWH(x, y, 36, 36), paint);
-      canvas.drawRect(
-        Rect.fromLTWH(x + 6, y + 6, 24, 24),
-        Paint()..color = Colors.white,
-      );
-      canvas.drawRect(Rect.fromLTWH(x + 11, y + 11, 14, 14), paint);
-    }
-
-    drawCorner(0, 0);
-    drawCorner(size.width - 36, 0);
-    drawCorner(0, size.height - 36);
-
-    // Simulated central matrix dots
-    const int grid = 9;
-    final step = size.width / grid;
-    for (int i = 0; i < grid; i++) {
-      for (int j = 0; j < grid; j++) {
-        // Skip corner areas
-        if ((i < 3 && j < 3) || (i >= grid - 3 && j < 3) || (i < 3 && j >= grid - 3)) {
-          continue;
-        }
-        if ((i * 7 + j * 13) % 3 != 0) {
-          canvas.drawRRect(
-            RRect.fromRectAndRadius(
-              Rect.fromLTWH(i * step + 2, j * step + 2, step - 4, step - 4),
-              const Radius.circular(2),
-            ),
-            paint,
-          );
-        }
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}

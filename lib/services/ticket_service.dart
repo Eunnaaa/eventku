@@ -41,11 +41,22 @@ class TicketService {
     }
 
     final eventRef = FirebaseFirestore.instance.collection('events').doc(event.id);
+    final userBookingRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('active_bookings')
+        .doc(event.id);
     final ticketRef = FirebaseFirestore.instance.collection('tickets').doc();
     final shortTicketCode = ticketRef.id.substring(0, ticketRef.id.length >= 8 ? 8 : ticketRef.id.length).toUpperCase();
 
     // 3. Eksekusi Atomic Transaction
     await FirebaseFirestore.instance.runTransaction((transaction) async {
+      // 3a. Validasi reservasi aktif di level transaksi atomik (Anti-Double Booking)
+      final bookingSnap = await transaction.get(userBookingRef);
+      if (bookingSnap.exists) {
+        throw Exception('Kamu sudah memiliki tiket aktif untuk event ini');
+      }
+
       final eventDoc = await transaction.get(eventRef);
 
       if (!eventDoc.exists) {
@@ -102,6 +113,13 @@ class TicketService {
         'createdAt': Timestamp.now(),
       });
 
+      // Catat reservasi aktif pengguna untuk proteksi ACID
+      transaction.set(userBookingRef, {
+        'ticketId': ticketRef.id,
+        'eventId': event.id,
+        'bookedAt': Timestamp.now(),
+      });
+
       // Update bookedCount secara atomik
       transaction.update(eventRef, {
         'bookedCount': freshBooked + 1,
@@ -151,6 +169,17 @@ class TicketService {
         'status': 'cancelled',
         'cancelledAt': Timestamp.now(),
       });
+
+      // Hapus dari active_bookings agar kuota hak reservasi user terbebas
+      final targetEventId = eventId ?? ticketData['eventId']?.toString();
+      if (targetEventId != null && targetEventId.isNotEmpty) {
+        final activeBookingRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('active_bookings')
+            .doc(targetEventId);
+        transaction.delete(activeBookingRef);
+      }
 
       if (eventRef != null) {
         final targetEventRef = eventRef;

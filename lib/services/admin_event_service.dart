@@ -19,22 +19,30 @@ class AdminEventService {
         .where('eventId', isEqualTo: id)
         .get();
 
-    // 2. Eksekusi batch write untuk menghapus event dan menandai tiket sebagai 'event_cancelled'
-    final batch = FirebaseFirestore.instance.batch();
-    batch.delete(_ref.doc(id));
-
-    for (final doc in ticketsSnap.docs) {
+    // 2. Eksekusi batch write bersegmen (chunked) untuk menghindari batas 500 operasi Firestore
+    final docsToUpdate = ticketsSnap.docs.where((doc) {
       final status = doc.data()['status']?.toString();
-      if (status == 'upcoming') {
+      return status == 'upcoming';
+    }).toList();
+
+    const chunkSize = 400;
+    for (int i = 0; i < docsToUpdate.length; i += chunkSize) {
+      final end = (i + chunkSize < docsToUpdate.length) ? i + chunkSize : docsToUpdate.length;
+      final chunk = docsToUpdate.sublist(i, end);
+
+      final batch = FirebaseFirestore.instance.batch();
+      for (final doc in chunk) {
         batch.update(doc.reference, {
           'status': 'event_cancelled',
           'cancelledAt': Timestamp.now(),
           'cancelReason': 'Event dibatalkan oleh panitia penyelenggara',
         });
       }
+      await batch.commit();
     }
 
-    await batch.commit();
+    // 3. Hapus dokumen event utama
+    await _ref.doc(id).delete();
   }
 
   static Future<void> togglePublish(String id, bool value) async {

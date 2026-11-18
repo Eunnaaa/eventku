@@ -288,9 +288,12 @@ class _CheckInScreenState extends State<CheckInScreen> {
         backgroundColor: Colors.transparent,
         foregroundColor: isDark ? Colors.white : AdminColors.textDark,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             /// GATE EVENT LOCK / SELECTOR
@@ -684,6 +687,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
